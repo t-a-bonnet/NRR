@@ -4,6 +4,10 @@ import pyterrier as pt
 import textdistance
 import torch
 import torch.nn as nn
+import os
+import shutil
+import re
+import string as st
 
 from fuzzywuzzy import fuzz
 from nltk import ngrams
@@ -77,25 +81,29 @@ class NRR:
             pt.init()
 
     def search(self, query_df, text_df):
-        query_df.dropna(subset='query', inplace=True)
+        query_df.dropna(subset=['query'], inplace=True)
         query_df['query'] = query_df['query'].apply(preprocess_text)
-        query_df['qid'] = query_df.index+1
+        query_df['qid'] = query_df.index + 1
         query_df.reset_index(drop=True, inplace=True)
         query_df['qid'] = query_df['qid'].astype(str)
 
-        text_df.dropna(subset='text', inplace=True)
+        text_df.dropna(subset=['text'], inplace=True)
         text_df['text'] = text_df['text'].apply(preprocess_text)
-        text_df['docno'] = text_df.index+1
+        text_df['docno'] = text_df.index + 1
         text_df.reset_index(drop=True, inplace=True)
         text_df['docno'] = text_df['docno'].astype(str)
 
         qids = list(query_df['qid'])
 
-        !rm -rf ./pd_index
-        pd_indexer = pt.DFIndexer('./pd_index')
+        # Remove the directory using Python
+        index_path = './pd_index'
+        if os.path.exists(index_path):
+            shutil.rmtree(index_path)
+
+        pd_indexer = pt.DFIndexer(index_path)
         index = pd_indexer.index(text_df['text'], text_df['docno'])
 
-        br = pt.BatchRetrieve(index, controls = {'wmodel': 'LGD', 'max_results':100})
+        br = pt.BatchRetrieve(index, controls={'wmodel': 'LGD', 'max_results': 100})
         br.setControl('wmodel', 'LGD')
 
         def pyterrier_search_function(query_df, num_results, text_df):
@@ -103,7 +111,7 @@ class NRR:
             for _, query_row in query_df.iterrows():
                 qid = query_row['qid']
                 query = query_row['query']
-                
+
                 # Perform the retrieval using PyTerrier
                 ranks = br.search(query)
                 ranks = ranks[:num_results]
@@ -113,7 +121,7 @@ class NRR:
                 ranks = ranks.sort_values(by=['score'], ascending=False)
                 ranks.rename(columns={'score': 'ret_score'}, inplace=True)
                 ranks.drop(columns={'docid', 'rank'}, inplace=True)
-                
+
                 # Fill in the query and text columns
                 for index, row in ranks.iterrows():
                     ranks.at[index, 'query'] = query
@@ -121,9 +129,9 @@ class NRR:
                     text_match = text_df[text_df['docno'] == docno]
                     if not text_match.empty:
                         ranks.at[index, 'text'] = text_match.iloc[0]['text']
-                
+
                 # Reset index and store in dictionary
                 ranks.reset_index(drop=True, inplace=True)
                 results_dict[qid] = ranks
-            
+
             return results_dict
