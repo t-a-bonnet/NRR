@@ -8,6 +8,7 @@ import os
 import shutil
 import re
 import string as st
+import urllib.request
 
 from fuzzywuzzy import fuzz
 from nltk import ngrams
@@ -33,6 +34,7 @@ class MLP(nn.Module):
         x = self.relu2(x)
         x = self.fc3(x)
         return x
+
 
 def calculate_fuzzy_matching_score(query, text):
     return fuzz.token_set_ratio(query, text)
@@ -92,36 +94,19 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text
 
-def find_file_in_directory(directory, filename):
-    """
-    Search for a file in a given directory and its subdirectories.
-    
-    Parameters:
-    - directory (str): The directory to start the search in.
-    - filename (str): The name of the file to search for.
-    
-    Returns:
-    - str: The path to the file if found, otherwise None.
-    """
-    for root, dirs, files in os.walk(directory):
-        if filename in files:
-            return os.path.join(root, filename)
-    return None
-
 class NRR:
-    def __init__(self, index_path, mlp_model_filename='nrr_mlp.pt'):
+    def __init__(self, index_path, mlp_model_path='nrr_mlp.pt', model_url='https://github.com/t-a-bonnet/NRR/blob/main/nrr/nrr_mlp.pt?raw=true'):
         # Initialize PyTerrier
         pt.init()
 
-        # Find the MLP model file
-        mlp_model_path = find_file_in_directory(os.getcwd(), mlp_model_filename)
-        if mlp_model_path is None:
-            raise FileNotFoundError(f"{mlp_model_filename} not found in the current directory or subdirectories.")
-        
-        print(f"Model file found at: {mlp_model_path}")
+        # Check if the MLP model file exists
+        if not os.path.exists(mlp_model_path):
+            print(f"{mlp_model_path} not found. Downloading from {model_url}...")
+            urllib.request.urlretrieve(model_url, mlp_model_path)
+            print(f"Downloaded model to {mlp_model_path}.")
 
         # Define and load the MLP model
-        self.input_size = 4
+        self.input_size = 4 
         self.hidden_size = 64
         self.model = MLP(input_size=self.input_size, hidden_size=self.hidden_size, output_size=1)
         self.model.load_state_dict(torch.load(mlp_model_path, map_location=torch.device('cpu')))
@@ -143,6 +128,7 @@ class NRR:
         text_df['docno'] = text_df['docno'].astype(str)
 
         # Remove existing index directory
+        index_path = './pd_index'
         if os.path.exists(index_path):
             shutil.rmtree(index_path)
 
