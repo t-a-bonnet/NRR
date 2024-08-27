@@ -95,7 +95,7 @@ def preprocess_text(text):
     return text
 
 class NRR:
-    def __init__(self, index_path, mlp_model_path='models/nrr_mlp.pt'):
+    def __init__(self, index_path, mlp_model_path='nrr_mlp.pt'):
         # Initialize PyTerrier
         pt.init()
 
