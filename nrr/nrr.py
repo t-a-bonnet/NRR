@@ -108,6 +108,12 @@ class NRR:
         br = pt.BatchRetrieve(index, controls={'wmodel': 'LGD', 'max_results': 100})
         br.setControl('wmodel', 'LGD')
 
+        # Similarity score means
+        retrieval_score_mean = 23.824547841344483
+        fuzzy_matching_mean = 91.57859531772576
+        smith_waterman_mean = 45.26086956521739
+        lcs_mean = 43.03010033444816
+
         def pyterrier_search_function(query_df, num_results, text_df):
             results_dict = {}
             for _, query_row in query_df.iterrows():
@@ -130,11 +136,18 @@ class NRR:
                     docno = row['docno']
                     text_match = text_df[text_df['docno'] == docno]
                     if not text_match.empty:
-                        text = text_match.iloc[0]['text']
                         ranks.at[index, 'text'] = text_match.iloc[0]['text']
-                        ranks.at[index, 'fuzzy_score'] = calculate_fuzzy_matching_score(query, text)
-                        ranks.at[index, 'smith_waterman_score'] = calculate_smith_waterman_similarity(query, text)
-                        ranks.at[index, 'lcs_score'] = calculate_lcs(query, text)
+
+                # Calculate similarity measures
+                ranks['fuzzy_matching'] = ranks.apply(lambda row: calculate_fuzzy_matching_score(row['query'], row['text']), axis=1)
+                ranks['smith_waterman'] = ranks.apply(lambda row: calculate_smith_waterman_similarity(row['query'], row['text']), axis=1)
+                ranks['lcs'] = ranks.apply(lambda row: calculate_lcs(row['query'], row['text']), axis=1)
+
+                # Create features by subtracting the means
+                ranks['feature_retrieval_score'] = ranks['ret_score'] - retrieval_score_mean
+                ranks['feature_fuzzy_matching'] = ranks['fuzzy_matching'] - fuzzy_matching_mean
+                ranks['feature_smith_waterman'] = ranks['smith_waterman'] - smith_waterman_mean
+                ranks['feature_lcs'] = ranks['lcs'] - lcs_mean
 
                 # Reset index and store in dictionary
                 ranks.reset_index(drop=True, inplace=True)
