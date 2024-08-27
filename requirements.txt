@@ -1,0 +1,9 @@
+fuzzywuzzy
+python-terrier
+textdistance
+numpy
+pandas
+nltk
+scikit-learn
+torch
+unidecode
