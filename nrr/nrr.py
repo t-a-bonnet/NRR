@@ -131,6 +131,9 @@ class NRR:
                     text_match = text_df[text_df['docno'] == docno]
                     if not text_match.empty:
                         ranks.at[index, 'text'] = text_match.iloc[0]['text']
+                        ranks.at[index, 'fuzzy_score'] = calculate_fuzzy_matching_score(query, text)
+                        ranks.at[index, 'smith_waterman_score'] = calculate_smith_waterman_similarity(query, text)
+                        ranks.at[index, 'lcs_score'] = calculate_lcs(query, text)
 
                 # Reset index and store in dictionary
                 ranks.reset_index(drop=True, inplace=True)
