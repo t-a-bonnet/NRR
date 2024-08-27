@@ -77,32 +77,34 @@ def preprocess_text(text):
 
 class NRR:
     def __init__(self, index_path, mlp_model_path='./nrr_model.pth'):
-        if not pt.started():
-            pt.init()
+        # Initialize PyTerrier
+        pt.init()
 
     def search(self, query_df, text_df):
+        # Ensure queries are preprocessed
         query_df.dropna(subset=['query'], inplace=True)
         query_df['query'] = query_df['query'].apply(preprocess_text)
         query_df['qid'] = query_df.index + 1
         query_df.reset_index(drop=True, inplace=True)
         query_df['qid'] = query_df['qid'].astype(str)
 
+        # Ensure texts are preprocessed
         text_df.dropna(subset=['text'], inplace=True)
         text_df['text'] = text_df['text'].apply(preprocess_text)
         text_df['docno'] = text_df.index + 1
         text_df.reset_index(drop=True, inplace=True)
         text_df['docno'] = text_df['docno'].astype(str)
 
-        qids = list(query_df['qid'])
-
-        # Remove the directory using Python
+        # Remove existing index directory
         index_path = './pd_index'
         if os.path.exists(index_path):
             shutil.rmtree(index_path)
 
+        # Indexing texts
         pd_indexer = pt.DFIndexer(index_path)
         index = pd_indexer.index(text_df['text'], text_df['docno'])
 
+        # Set up the retrieval model
         br = pt.BatchRetrieve(index, controls={'wmodel': 'LGD', 'max_results': 100})
         br.setControl('wmodel', 'LGD')
 
@@ -135,3 +137,6 @@ class NRR:
                 results_dict[qid] = ranks
 
             return results_dict
+
+        # Call the search function and return the results
+        return pyterrier_search_function(query_df, num_results=10, text_df=text_df)  # Example num_results
