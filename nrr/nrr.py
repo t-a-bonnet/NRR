@@ -17,6 +17,25 @@ from sklearn.preprocessing import StandardScaler
 from unidecode import unidecode
 
 
+# Define the MLP model architecture
+class MLP(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size):
+        super(MLP, self).__init__()
+        self.fc1 = nn.Linear(input_size, hidden_size)
+        self.relu1 = nn.ReLU()
+        self.fc2 = nn.Linear(hidden_size, 32)
+        self.relu2 = nn.ReLU()
+        self.fc3 = nn.Linear(32, output_size)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.relu1(x)
+        x = self.fc2(x)
+        x = self.relu2(x)
+        x = self.fc3(x)
+        return x
+
+
 def calculate_fuzzy_matching_score(query, text):
     return fuzz.token_set_ratio(query, text)
 
@@ -76,9 +95,16 @@ def preprocess_text(text):
     return text
 
 class NRR:
-    def __init__(self, index_path, mlp_model_path='./nrr_model.pth'):
+    def __init__(self, index_path, mlp_model_path='./models/nrr_mlp.pt'):
         # Initialize PyTerrier
         pt.init()
+
+        # Define and load the MLP model
+        self.input_size = 4  # Number of features
+        self.hidden_size = 64
+        self.model = MLP(input_size=self.input_size, hidden_size=self.hidden_size, output_size=1)
+        self.model.load_state_dict(torch.load(mlp_model_path, map_location=torch.device('cpu')))
+        self.model.eval()
 
     def search(self, query_df, text_df):
         # Ensure queries are preprocessed
@@ -144,10 +170,22 @@ class NRR:
                 ranks['lcs'] = ranks.apply(lambda row: calculate_lcs(row['query'], row['text']), axis=1)
 
                 # Create features by subtracting the means
-                ranks['feature_retrieval_score'] = ranks['ret_score'] - retrieval_score_mean
-                ranks['feature_fuzzy_matching'] = ranks['fuzzy_matching'] - fuzzy_matching_mean
-                ranks['feature_smith_waterman'] = ranks['smith_waterman'] - smith_waterman_mean
-                ranks['feature_lcs'] = ranks['lcs'] - lcs_mean
+                ranks['retrieval_score_feature'] = ranks['ret_score'] - retrieval_score_mean
+                ranks['fuzzy_matching_feature'] = ranks['fuzzy_matching'] - fuzzy_matching_mean
+                ranks['smith_waterman_feature'] = ranks['smith_waterman'] - smith_waterman_mean
+                ranks['lcs_feature'] = ranks['lcs'] - lcs_mean
+
+                # Prepare input features for the model
+                features = ranks[['retrieval_score_feature', 'fuzzy_matching_feature', 'smith_waterman_feature', 'lcs_feature']].values
+                features_tensor = torch.tensor(features, dtype=torch.float32)
+
+                # Perform classification
+                with torch.no_grad():
+                    outputs = self.model(features_tensor)
+                    preds = torch.round(torch.sigmoid(outputs)).squeeze().cpu().numpy()
+
+                # Add predictions to results
+                ranks['prediction'] = preds
 
                 # Reset index and store in dictionary
                 ranks.reset_index(drop=True, inplace=True)
