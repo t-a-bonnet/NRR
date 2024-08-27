@@ -100,23 +100,10 @@ class NRR:
         pt.init()
 
         # Define and load the MLP model
-        self.input_size = 4  # Number of features
+        self.input_size = 4 
         self.hidden_size = 64
         self.model = MLP(input_size=self.input_size, hidden_size=self.hidden_size, output_size=1)
-        
-        # Construct the full path to the model file relative to this script's location
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        full_model_path = os.path.join(script_dir, mlp_model_path)
-
-        # Debug prints
-        print(f"Script directory: {script_dir}")
-        print(f"Attempting to load model from: {full_model_path}")
-
-        # Load the model with a relative path
-        if not os.path.isfile(full_model_path):
-            raise FileNotFoundError(f"Model file not found at path: {full_model_path}")
-        
-        self.model.load_state_dict(torch.load(full_model_path, map_location=torch.device('cpu')))
+        self.model.load_state_dict(torch.load(mlp_model_path, map_location=torch.device('cpu')))
         self.model.eval()
 
     def search(self, query_df, text_df):
