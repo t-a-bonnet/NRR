@@ -7,7 +7,7 @@ setup(
     install_requires=[
         'numpy',
         'pandas',
-        'pyterrier',
+        'python-terrier',
         'textdistance',
         'torch',
         'fuzzywuzzy',
