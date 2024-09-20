@@ -1,3 +1,4 @@
+import nltk
 import numpy as np
 import pandas as pd
 import pyterrier as pt
@@ -5,17 +6,29 @@ import textdistance
 import torch
 import torch.nn as nn
 import os
+import pdfplumber
+import pytesseract
 import shutil
 import re
 import string as st
 import urllib.request
 
+from collections import Counter
 from fuzzywuzzy import fuzz
 from nltk import ngrams
+from nltk.corpus import stopwords
+from pdf2image import convert_from_path
+from PIL import Image
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
 from unidecode import unidecode
+
+# Download stopwords if not already downloaded
+nltk.download('stopwords')
+
+# Get English stopwords from NLTK
+stop_words = set(stopwords.words('english'))
 
 # Define the MLP model architecture
 class MLP(nn.Module):
@@ -146,7 +159,7 @@ class NRR:
         smith_waterman_mean = 45.26086956521739
         lcs_mean = 43.03010033444816
 
-        def pyterrier_search_function(query_df, num_results, text_df):
+        def search_and_classify(query_df, num_results, text_df):
             results_dict = {}
             for _, query_row in query_df.iterrows():
                 qid = query_row['qid']
@@ -200,4 +213,94 @@ class NRR:
             return results_dict
 
         # Call the search function and return the results
-        return pyterrier_search_function(query_df, num_results=10, text_df=text_df)  # Example num_results
+        return search_and_classify(query_df, num_results=10, text_df=text_df)
+    
+    # Function to perform OCR on image files and PDFs
+    def ocr(self, directory):
+        ocr_results = []
+        supported_image_formats = ('.jpg', '.jpeg', '.png')
+        supported_pdf_format = '.pdf'
+
+        # Walk through the directory and its subdirectories
+        for root, dirs, files in os.walk(directory):
+            for file in files:
+                file_path = os.path.join(root, file)
+
+                # Handle image files (JPG, JPEG, PNG)
+                if file.lower().endswith(supported_image_formats):
+                    try:
+                        img = Image.open(file_path)
+                        text = pytesseract.image_to_string(img)
+                        ocr_results.append({'docno': file, 'text': text})
+                    except Exception as e:
+                        print(f"Error processing image {file}: {e}")
+
+                # Handle PDF files
+                elif file.lower().endswith(supported_pdf_format):
+                    try:
+                        pages = convert_from_path(file_path)
+                        pdf_text = ''
+                        for page in pages:
+                            text = pytesseract.image_to_string(page)
+                            pdf_text += text
+                        ocr_results.append({'docno': file, 'text': pdf_text})
+                    except Exception as e:
+                        print(f"Error processing PDF {file}: {e}")
+
+        # Return a DataFrame with OCR results
+        return pd.DataFrame(ocr_results, columns=['docno', 'text'])
+    
+    # Function to extract machine-readable text from PDF files using pdfplumber
+    def extract(self, directory):
+        rows = []
+        docno = 1
+
+        for root, dirs, files in os.walk(directory):
+            for file in files:
+                if file.lower().endswith('.pdf'):
+                    file_path = os.path.join(root, file)
+                    try:
+                        with pdfplumber.open(file_path) as pdf:
+                            for page in pdf.pages:
+                                text = page.extract_text()
+                                if text:  # If text is not None, add it to the dataframe
+                                    rows.append({'docno': docno, 'text': text})
+                                    docno += 1
+                    except Exception as e:
+                        print(f"Error processing {file_path}: {e}")
+
+        # Convert the list of dictionaries to a pandas DataFrame
+        df = pd.DataFrame(rows)
+        return df
+    
+        # Function to postprocess text DataFrame
+    def postprocess(self, df):
+        # Function to preprocess queries by removing stopwords
+        def preprocess_query(query):
+            words = query.split()
+            filtered_words = [word for word in words if word.lower() not in stop_words]
+            return ' '.join(filtered_words)
+
+        # Apply preprocessing to the 'query' column
+        df['query'] = df['query'].apply(preprocess_query)
+
+        # Count word frequency in the 'query' column
+        word_freq = Counter(' '.join(df['query']).split())
+
+        # Calculate average word frequency
+        average_freq = sum(word_freq.values()) / len(word_freq)
+
+        # Function to filter out rows with common words
+        def filter_common_words(query):
+            words = query.split()
+            if len(words) == 1 and word_freq[words[0]] > average_freq:
+                return False
+            return True
+
+        # Filter DataFrame based on the custom filtering logic
+        df = df[df['query'].apply(filter_common_words)]
+
+        # Reset index
+        df.reset_index(drop=True, inplace=True)
+
+        return df

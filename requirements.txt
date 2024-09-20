@@ -3,6 +3,10 @@ python-terrier
 textdistance
 numpy
 pandas
+pdf2image
+pdfplumber
+Pillow
+pytesseract
 nltk
 scikit-learn
 torch
