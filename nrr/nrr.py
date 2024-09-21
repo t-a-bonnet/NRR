@@ -232,7 +232,7 @@ class NRR:
             if file.lower().endswith(supported_image_formats):
                 try:
                     img = Image.open(file)
-                    text = pytesseract.image_to_string(img)
+                    text = pytesseract.image_to_string(img).replace('\n', ' ')
                     ocr_results.append({'File Name': file, 'Text': text})
                 except Exception as e:
                     print(f"Error processing image {file}: {e}")
@@ -242,13 +242,10 @@ class NRR:
                 try:
                     # Convert PDF to images
                     images = convert_from_path(file)
-                    pdf_text = ''
                     
-                    for img in images:
-                        text = pytesseract.image_to_string(img)
-                        pdf_text += text
-                    
-                    ocr_results.append({'File Name': file, 'Text': pdf_text})
+                    for page_number, img in enumerate(images, start=1):
+                        text = pytesseract.image_to_string(img).replace('\n', ' ')
+                        ocr_results.append({'File Name': f"{file} Page {page_number}", 'Text': text})
                 except Exception as e:
                     print(f"Error processing PDF {file}: {e}")
 
