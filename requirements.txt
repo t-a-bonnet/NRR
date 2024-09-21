@@ -7,6 +7,7 @@ pdf2image
 pdfplumber
 Pillow
 pytesseract
+python-Levenshtein
 nltk
 scikit-learn
 torch
