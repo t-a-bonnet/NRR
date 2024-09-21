@@ -216,57 +216,48 @@ class NRR:
         # Call the search function and return the results
         return search_and_classify(query_df, num_results=10, text_df=text_df)
     
-def get_files_list(path):
-    return [file for file in glob.glob(path, recursive=True) if os.path.isfile(file)]
+    def get_files_list(self, path):
+        return [file for file in glob.glob(path, recursive=True) if os.path.isfile(file) and '_MACOSX' not in file and not file.startswith('._')]
 
-# Function to perform OCR on image files and PDFs
-def ocr(directory):
-    ocr_results = []
-    supported_image_formats = ('.jpg', '.jpeg', '.png')
-    supported_pdf_format = '.pdf'
+    def ocr(self, directory):
+        ocr_results = []
+        supported_image_formats = ('.jpg', '.jpeg', '.png')
+        supported_pdf_format = '.pdf'
 
-    # Get all files in the directory
-    files_list = get_files_list(os.path.join(directory, '**', '*'))
+        # Get all files in the directory
+        files_list = self.get_files_list(os.path.join(directory, '**', '*'))
 
-    for file in files_list:
-        # Ignore _MACOSX folder and metadata files
-        if '_MACOSX' in file or file.startswith('._'):
-            continue
+        for file in files_list:
+            # Handle image files (JPG, JPEG, PNG)
+            if file.lower().endswith(supported_image_formats):
+                try:
+                    img = Image.open(file)
+                    text = pytesseract.image_to_string(img)
+                    ocr_results.append({'File Name': file, 'Text': text})
+                except Exception as e:
+                    print(f"Error processing image {file}: {e}")
 
-        # Handle image files (JPG, JPEG, PNG)
-        if file.lower().endswith(supported_image_formats):
-            try:
-                img = Image.open(file)
-                text = pytesseract.image_to_string(img)
-                ocr_results.append({'File Name': file, 'Text': text})
-            except Exception as e:
-                print(f"Error processing image {file}: {e}")
+            # Handle PDF files
+            elif file.lower().endswith(supported_pdf_format):
+                try:
+                    # Convert PDF to images
+                    images = convert_from_path(file)
+                    pdf_text = ''
+                    
+                    for img in images:
+                        text = pytesseract.image_to_string(img)
+                        pdf_text += text
+                    
+                    ocr_results.append({'File Name': file, 'Text': pdf_text})
+                except Exception as e:
+                    print(f"Error processing PDF {file}: {e}")
 
-        # Handle PDF files
-        elif file.lower().endswith(supported_pdf_format):
-            try:
-                # Convert PDF to images using Pillow
-                images = Image.open(file)
-                pdf_text = ''
-                
-                # Loop through each page if the PDF has multiple pages
-                for page in range(images.n_frames):
-                    images.seek(page)
-                    text = pytesseract.image_to_string(images)
-                    pdf_text += text
-                
-                ocr_results.append({'File Name': file, 'Text': pdf_text})
-            except Exception as e:
-                print(f"Error processing PDF {file}: {e}")
+        # Convert results to DataFrame
+        return pd.DataFrame(ocr_results)
 
-    # Convert results to DataFrame
-    return pd.DataFrame(ocr_results)
-    
-    # Function to extract machine-readable text from PDF files using pdfplumber
     def extract(self, directory):
         rows = []
         docno = 1
-
         for root, dirs, files in os.walk(directory):
             for file in files:
                 if file.lower().endswith('.pdf'):
@@ -275,17 +266,14 @@ def ocr(directory):
                         with pdfplumber.open(file_path) as pdf:
                             for page in pdf.pages:
                                 text = page.extract_text()
-                                if text:  # If text is not None, add it to the dataframe
+                                if text:
                                     rows.append({'docno': docno, 'text': text})
                                     docno += 1
                     except Exception as e:
                         print(f"Error processing {file_path}: {e}")
 
-        # Convert the list of dictionaries to a pandas DataFrame
-        df = pd.DataFrame(rows)
-        return df
-    
-        # Function to postprocess text DataFrame
+        return pd.DataFrame(rows)
+
     def postprocess(self, df):
         # Function to preprocess queries by removing stopwords
         def preprocess_query(query):
@@ -293,26 +281,17 @@ def ocr(directory):
             filtered_words = [word for word in words if word.lower() not in stop_words]
             return ' '.join(filtered_words)
 
-        # Apply preprocessing to the 'query' column
         df['query'] = df['query'].apply(preprocess_query)
-
-        # Count word frequency in the 'query' column
         word_freq = Counter(' '.join(df['query']).split())
-
-        # Calculate average word frequency
         average_freq = sum(word_freq.values()) / len(word_freq)
 
-        # Function to filter out rows with common words
         def filter_common_words(query):
             words = query.split()
             if len(words) == 1 and word_freq[words[0]] > average_freq:
                 return False
             return True
 
-        # Filter DataFrame based on the custom filtering logic
         df = df[df['query'].apply(filter_common_words)]
-
-        # Reset index
         df.reset_index(drop=True, inplace=True)
 
         return df
