@@ -1,6 +1,6 @@
 fuzzywuzzy
-python-terrier
-textdistance
+glob
+nltk
 numpy
 pandas
 pdf2image
@@ -8,8 +8,8 @@ pdfplumber
 Pillow
 pytesseract
 python-Levenshtein
-nltk
+python-terrier
 scikit-learn
+textdistance
 torch
 unidecode
-wand
