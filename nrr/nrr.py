@@ -216,13 +216,8 @@ class NRR:
         # Call the search function and return the results
         return search_and_classify(query_df, num_results=10, text_df=text_df)
     
-# Function to get a list of files from the specified directory
 def get_files_list(path):
-    files_list = []
-    for file in glob.glob(path, recursive=True):
-        if os.path.isfile(file) and not file.startswith('._'):
-            files_list.append(file)
-    return files_list
+    return [file for file in glob.glob(path, recursive=True) if os.path.isfile(file)]
 
 # Function to perform OCR on image files and PDFs
 def ocr(directory):
@@ -234,6 +229,10 @@ def ocr(directory):
     files_list = get_files_list(os.path.join(directory, '**', '*'))
 
     for file in files_list:
+        # Ignore _MACOSX folder
+        if '_MACOSX' in file:
+            continue
+
         # Handle image files (JPG, JPEG, PNG)
         if file.lower().endswith(supported_image_formats):
             try:
@@ -246,11 +245,11 @@ def ocr(directory):
         # Handle PDF files
         elif file.lower().endswith(supported_pdf_format):
             try:
-                images = Image.open(file)
+                # Convert PDF to images (JPEG)
+                images = convert_from_path(file)
                 pdf_text = ''
-                for page in range(images.n_frames):
-                    images.seek(page)
-                    text = pytesseract.image_to_string(images)
+                for img in images:
+                    text = pytesseract.image_to_string(img)
                     pdf_text += text
                 ocr_results.append({'File Name': file, 'Text': pdf_text})
             except Exception as e:
@@ -258,9 +257,6 @@ def ocr(directory):
 
     # Convert results to DataFrame
     return pd.DataFrame(ocr_results)
-
-    # Return a DataFrame with OCR results
-    return pd.DataFrame(ocr_results, columns=['docno', 'text'])
     
     # Function to extract machine-readable text from PDF files using pdfplumber
     def extract(self, directory):
