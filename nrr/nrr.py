@@ -23,6 +23,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
 from unidecode import unidecode
+from wand.image import Image as WandImage
 
 # Download stopwords if not already downloaded
 nltk.download('stopwords')
@@ -215,40 +216,44 @@ class NRR:
         # Call the search function and return the results
         return search_and_classify(query_df, num_results=10, text_df=text_df)
     
-    # Function to perform OCR on image files and PDFs
-    def ocr(self, directory):
-        ocr_results = []
-        supported_image_formats = ('.jpg', '.jpeg', '.png')
-        supported_pdf_format = '.pdf'
+# Function to perform OCR on image files and PDFs
+def ocr(self, directory):
+    ocr_results = []
+    supported_image_formats = ('.jpg', '.jpeg', '.png')
+    supported_pdf_format = '.pdf'
 
-        # Walk through the directory and its subdirectories
-        for root, dirs, files in os.walk(directory):
-            for file in files:
-                file_path = os.path.join(root, file)
+    # Walk through the directory and its subdirectories
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if file.startswith('._'):  # Skip macOS metadata files
+                continue
+                
+            file_path = os.path.join(root, file)
 
-                # Handle image files (JPG, JPEG, PNG)
-                if file.lower().endswith(supported_image_formats):
-                    try:
-                        img = Image.open(file_path)
-                        text = pytesseract.image_to_string(img)
-                        ocr_results.append({'docno': file, 'text': text})
-                    except Exception as e:
-                        print(f"Error processing image {file}: {e}")
+            # Handle image files (JPG, JPEG, PNG)
+            if file.lower().endswith(supported_image_formats):
+                try:
+                    img = Image.open(file_path)
+                    text = pytesseract.image_to_string(img)
+                    ocr_results.append({'docno': file, 'text': text})
+                except Exception as e:
+                    print(f"Error processing image {file}: {e}")
 
-                # Handle PDF files
-                elif file.lower().endswith(supported_pdf_format):
-                    try:
-                        pages = convert_from_path(file_path)
+            # Handle PDF files
+            elif file.lower().endswith(supported_pdf_format):
+                try:
+                    with WandImage(filename=file_path, resolution=300) as pdf:
                         pdf_text = ''
-                        for page in pages:
-                            text = pytesseract.image_to_string(page)
-                            pdf_text += text
+                        for page in pdf.sequence:
+                            with WandImage(page) as img_page:
+                                text = pytesseract.image_to_string(img_page)
+                                pdf_text += text
                         ocr_results.append({'docno': file, 'text': pdf_text})
-                    except Exception as e:
-                        print(f"Error processing PDF {file}: {e}")
+                except Exception as e:
+                    print(f"Error processing PDF {file}: {e}")
 
-        # Return a DataFrame with OCR results
-        return pd.DataFrame(ocr_results, columns=['docno', 'text'])
+    # Return a DataFrame with OCR results
+    return pd.DataFrame(ocr_results, columns=['docno', 'text'])
     
     # Function to extract machine-readable text from PDF files using pdfplumber
     def extract(self, directory):
