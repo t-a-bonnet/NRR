@@ -229,8 +229,8 @@ def ocr(directory):
     files_list = get_files_list(os.path.join(directory, '**', '*'))
 
     for file in files_list:
-        # Ignore _MACOSX folder
-        if '_MACOSX' in file:
+        # Ignore _MACOSX folder and metadata files
+        if '_MACOSX' in file or file.startswith('._'):
             continue
 
         # Handle image files (JPG, JPEG, PNG)
@@ -245,12 +245,16 @@ def ocr(directory):
         # Handle PDF files
         elif file.lower().endswith(supported_pdf_format):
             try:
-                # Convert PDF to images (JPEG)
-                images = convert_from_path(file)
+                # Convert PDF to images using Pillow
+                images = Image.open(file)
                 pdf_text = ''
-                for img in images:
-                    text = pytesseract.image_to_string(img)
+                
+                # Loop through each page if the PDF has multiple pages
+                for page in range(images.n_frames):
+                    images.seek(page)
+                    text = pytesseract.image_to_string(images)
                     pdf_text += text
+                
                 ocr_results.append({'File Name': file, 'Text': pdf_text})
             except Exception as e:
                 print(f"Error processing PDF {file}: {e}")
