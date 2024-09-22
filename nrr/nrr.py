@@ -133,11 +133,11 @@ class NRR:
     def search(self, query_df, text_df, include_file_names=False, file_name_column=None):
         # Check if 'qid' column exists in query_df
         if 'qid' not in query_df.columns:
-            return "Error: 'qid' column is missing in query_df. Please add the column and try again."
+            raise ValueError("Error: 'qid' column is missing in query_df. Please add the column and try again.")
         
         # Check if 'docno' column exists in text_df
         if 'docno' not in text_df.columns:
-            return "Error: 'docno' column is missing in text_df. Please add the column and try again."
+            raise ValueError("Error: 'docno' column is missing in text_df. Please add the column and try again.")
         
         # If file names are to be included, check for the file name column
         if include_file_names:
