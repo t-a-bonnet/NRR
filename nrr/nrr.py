@@ -255,19 +255,20 @@ class NRR:
     def extract(self, directory):
         rows = []
         docno = 1
-        for root, dirs, files in os.walk(directory):
-            for file in files:
-                if file.lower().endswith('.pdf'):
-                    file_path = os.path.join(root, file)
-                    try:
-                        with pdfplumber.open(file_path) as pdf:
-                            for page in pdf.pages:
-                                text = page.extract_text()
-                                if text:
-                                    rows.append({'docno': docno, 'text': text})
-                                    docno += 1
-                    except Exception as e:
-                        print(f"Error processing {file_path}: {e}")
+
+        # Get all PDF files in the directory using the get_files_list function
+        files_list = self.get_files_list(os.path.join(directory, '**', '*.pdf'))
+
+        for file in files_list:
+            try:
+                with pdfplumber.open(file) as pdf:
+                    for page in pdf.pages:
+                        text = page.extract_text()
+                        if text:
+                            rows.append({'docno': docno, 'text': text})
+                            docno += 1
+            except Exception as e:
+                print(f"Error processing {file}: {e}")
 
         return pd.DataFrame(rows)
 
