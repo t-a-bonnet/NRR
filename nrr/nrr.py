@@ -217,7 +217,7 @@ class NRR:
         return search_and_classify(query_df, num_results=10, text_df=text_df)
     
     def get_files_list(self, path):
-        return [file for file in glob.glob(path, recursive=True) if os.path.isfile(file) and '_MACOSX' not in file and not file.startswith('._')]
+        return [file for file in glob.glob(path, recursive=True) if os.path.isfile(file) and '__MACOSX' not in file and not file.startswith('._')]
 
     def ocr(self, directory):
         ocr_results = []
