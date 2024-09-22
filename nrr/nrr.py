@@ -108,7 +108,7 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text
 
-def get_files_list(self, path):
+def get_files_list(path):
     return [file for file in glob.glob(path, recursive=True) if os.path.isfile(file) and '__MACOSX' not in file and not file.startswith('._')]
 
 class NRR:
