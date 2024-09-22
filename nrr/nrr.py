@@ -108,6 +108,9 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text
 
+def get_files_list(self, path):
+    return [file for file in glob.glob(path, recursive=True) if os.path.isfile(file) and '__MACOSX' not in file and not file.startswith('._')]
+
 class NRR:
     def __init__(self, index_path, mlp_model_path='nrr_mlp.pt', model_url='https://github.com/t-a-bonnet/NRR/blob/main/nrr/nrr_mlp.pt?raw=true'):
         # Initialize PyTerrier
@@ -215,12 +218,9 @@ class NRR:
 
         # Call the search function and return the results
         return search_and_classify(query_df, num_results=10, text_df=text_df)
-    
-    def get_files_list(self, path):
-        return [file for file in glob.glob(path, recursive=True) if os.path.isfile(file) and '__MACOSX' not in file and not file.startswith('._')]
 
     def ocr(self, directory):
-        ocr_results = []
+        rows = []
         supported_image_formats = ('.jpg', '.jpeg', '.png')
         supported_pdf_format = '.pdf'
 
@@ -233,7 +233,7 @@ class NRR:
                 try:
                     img = Image.open(file)
                     text = pytesseract.image_to_string(img).replace('\n', ' ')
-                    ocr_results.append({'File Name': file, 'Text': text})
+                    rows.append({'file': file, 'text': text})
                 except Exception as e:
                     print(f"Error processing image {file}: {e}")
 
@@ -243,18 +243,17 @@ class NRR:
                     # Convert PDF to images
                     images = convert_from_path(file)
                     
-                    for page_number, img in enumerate(images, start=1):
+                    for page, img in enumerate(images, start=1):
                         text = pytesseract.image_to_string(img).replace('\n', ' ')
-                        ocr_results.append({'File Name': f"{file} Page {page_number}", 'Text': text})
+                        rows.append({'file': f"{file}/page_{page}", 'text': text})
                 except Exception as e:
                     print(f"Error processing PDF {file}: {e}")
 
         # Convert results to DataFrame
-        return pd.DataFrame(ocr_results)
+        return pd.DataFrame(rows)
 
     def extract(self, directory):
         rows = []
-        docno = 1
 
         # Get all PDF files in the directory using the get_files_list function
         files_list = self.get_files_list(os.path.join(directory, '**', '*.pdf'))
@@ -266,8 +265,7 @@ class NRR:
                         text = page.extract_text()
                         if text:
                             text = text.replace('\n', ' ')
-                            rows.append({'docno': docno, 'text': text})
-                            docno += 1
+                            rows.append({'file': f"{file}/page_{page}", 'text': text})
             except Exception as e:
                 print(f"Error processing {file}: {e}")
 
