@@ -1,3 +1,4 @@
+import concurrent.futures
 import glob
 import nltk
 import numpy as np
@@ -163,8 +164,16 @@ class NRR:
         smith_waterman_mean = 45.26086956521739
         lcs_mean = 43.03010033444816
 
+        def calculate_similarities(row, query):
+            # Calculate all similarities for a given row
+            fuzzy_matching = calculate_fuzzy_matching_score(query, row['text'])
+            smith_waterman = calculate_smith_waterman_similarity(query, row['text'])
+            lcs = calculate_lcs(query, row['text'])
+            return fuzzy_matching, smith_waterman, lcs
+
         def search_and_classify(query_df, num_results, text_df):
             results_dict = {}
+            
             for _, query_row in query_df.iterrows():
                 qid = query_row['qid']
                 query = query_row['query']
@@ -187,10 +196,21 @@ class NRR:
                     if not text_match.empty:
                         ranks.at[index, 'text'] = text_match.iloc[0]['text']
 
-                # Calculate similarity measures
-                ranks['fuzzy_matching'] = ranks.apply(lambda row: calculate_fuzzy_matching_score(row['query'], row['text']), axis=1)
-                ranks['smith_waterman'] = ranks.apply(lambda row: calculate_smith_waterman_similarity(row['query'], row['text']), axis=1)
-                ranks['lcs'] = ranks.apply(lambda row: calculate_lcs(row['query'], row['text']), axis=1)
+                # Parallelize similarity calculations
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = {
+                        executor.submit(calculate_similarities, row, query): index for index, row in ranks.iterrows()
+                    }
+
+                    for future in concurrent.futures.as_completed(futures):
+                        index = futures[future]
+                        try:
+                            fuzzy_matching, smith_waterman, lcs = future.result()
+                            ranks.at[index, 'fuzzy_matching'] = fuzzy_matching
+                            ranks.at[index, 'smith_waterman'] = smith_waterman
+                            ranks.at[index, 'lcs'] = lcs
+                        except Exception as e:
+                            print(f"Error calculating similarities for row {index}: {e}")
 
                 # Create features by subtracting the means
                 ranks['retrieval_score_feature'] = ranks['ret_score'] - retrieval_score_mean
