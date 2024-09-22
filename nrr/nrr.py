@@ -130,20 +130,35 @@ class NRR:
         self.model.load_state_dict(torch.load(mlp_model_path, map_location=torch.device('cpu')))
         self.model.eval()
 
-    def search(self, query_df, text_df):
-        # Ensure queries are preprocessed
-        query_df.dropna(subset=['query'], inplace=True)
-        query_df['query'] = query_df['query'].apply(preprocess_text)
-        query_df['qid'] = query_df.index + 1
-        query_df.reset_index(drop=True, inplace=True)
+    def search(self, query_df, text_df, include_file_names=False, file_name_column=None):
+        # Check if 'qid' column exists in query_df
+        if 'qid' not in query_df.columns:
+            return "Error: 'qid' column is missing in query_df. Please add the column and try again."
+        
+        # Check if 'docno' column exists in text_df
+        if 'docno' not in text_df.columns:
+            return "Error: 'docno' column is missing in text_df. Please add the column and try again."
+        
+        # If file names are to be included, check for the file name column
+        if include_file_names:
+            if file_name_column is None:
+                return "Error: File name column not provided. Please specify the file name column."
+            if file_name_column not in text_df.columns:
+                return f"Error: The specified file name column '{file_name_column}' does not exist in text_df."
+        
+        # Ensure 'qid' and 'docno' are strings
         query_df['qid'] = query_df['qid'].astype(str)
+        text_df['docno'] = text_df['docno'].astype(str)
+
+        # Ensure queries are preprocessed
+        query_df['query'] = query_df['query'].apply(preprocess_text)
+        query_df.dropna(subset=['query'], inplace=True)
+        query_df.reset_index(drop=True, inplace=True)
 
         # Ensure texts are preprocessed
-        text_df.dropna(subset=['text'], inplace=True)
         text_df['text'] = text_df['text'].apply(preprocess_text)
-        text_df['docno'] = text_df.index + 1
+        text_df.dropna(subset=['text'], inplace=True)
         text_df.reset_index(drop=True, inplace=True)
-        text_df['docno'] = text_df['docno'].astype(str)
 
         # Remove existing index directory
         index_path = './pd_index'
@@ -184,17 +199,22 @@ class NRR:
                 ranks['qid'] = qid
                 ranks['query'] = ''
                 ranks['text'] = ''
+                if include_file_names:
+                    ranks[file_name_column] = ''
+
                 ranks = ranks.sort_values(by=['score'], ascending=False)
                 ranks.rename(columns={'score': 'ret_score'}, inplace=True)
                 ranks.drop(columns={'docid', 'rank'}, inplace=True)
 
-                # Fill in the query and text columns
+                # Fill in the query, text, and optionally file name columns
                 for index, row in ranks.iterrows():
                     ranks.at[index, 'query'] = query
                     docno = row['docno']
                     text_match = text_df[text_df['docno'] == docno]
                     if not text_match.empty:
                         ranks.at[index, 'text'] = text_match.iloc[0]['text']
+                        if include_file_names:
+                            ranks.at[index, file_name_column] = text_match.iloc[0][file_name_column]
 
                 # Parallelize similarity calculations
                 with concurrent.futures.ThreadPoolExecutor() as executor:
