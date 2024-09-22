@@ -225,7 +225,7 @@ class NRR:
         supported_pdf_format = '.pdf'
 
         # Get all files in the directory
-        files_list = self.get_files_list(os.path.join(directory, '**', '*'))
+        files_list = get_files_list(os.path.join(directory, '**', '*'))
 
         for file in files_list:
             # Handle image files (JPG, JPEG, PNG)
@@ -256,7 +256,7 @@ class NRR:
         rows = []
 
         # Get all PDF files in the directory using the get_files_list function
-        files_list = self.get_files_list(os.path.join(directory, '**', '*.pdf'))
+        files_list = get_files_list(os.path.join(directory, '**', '*.pdf'))
 
         for file in files_list:
             try:
