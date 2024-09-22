@@ -265,6 +265,7 @@ class NRR:
                     for page in pdf.pages:
                         text = page.extract_text()
                         if text:
+                            text = text.replace('\n', ' ')
                             rows.append({'docno': docno, 'text': text})
                             docno += 1
             except Exception as e:
