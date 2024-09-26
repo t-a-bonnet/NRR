@@ -147,19 +147,19 @@ def extract_object_title(json_ld):
 def extract_creator_name(json_ld):
     creator_uri = None
     try:
-        # Check if produced_by exists and if 'part' or 'carried_out_by' is present
+        # Check if produced_by exists
         produced_by = json_ld.get('produced_by', {})
 
-        if 'part' in produced_by:
-            # Extract the ID from 'carried_out_by' within 'part'
-            for part in produced_by['part']:
-                carried_out_by = part.get('carried_out_by', {})
-                if 'id' in carried_out_by:
-                    creator_uri = carried_out_by['id']
-                    break
-        elif 'carried_out_by' in produced_by:
+        # Attempt to retrieve creator ID from 'part' path
+        if 'part' in produced_by and isinstance(produced_by['part'], list) and len(produced_by['part']) > 0:
+            carried_out_by = produced_by['part'][0].get('carried_out_by', {})
+            if isinstance(carried_out_by, list) and len(carried_out_by) > 0:
+                creator_uri = carried_out_by[0].get('id')
+
+        # If no creator URI found in 'part', check the direct path
+        if not creator_uri:
             carried_out_by = produced_by.get('carried_out_by', {})
-            if 'id' in carried_out_by:
+            if isinstance(carried_out_by, dict) and 'id' in carried_out_by:
                 creator_uri = carried_out_by['id']
 
         # If no creator URI was found
