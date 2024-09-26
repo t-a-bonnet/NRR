@@ -430,6 +430,9 @@ class NRR:
 
         # Create 'query' column by concatenating 'object_title' and 'creator_name'
         df['query'] = df.apply(lambda row: f"{row['object_title']} {row['creator_name']}".strip() if row['object_title'] and row['creator_name'] else None, axis=1)
+
+        # Preprocess the queries
+        df['query'] = df['query'].apply(preprocess_text)
         
         # Drop 'object_title' and 'creator_name' columns
         df.drop(columns=['object_title', 'creator_name'], inplace=True)
