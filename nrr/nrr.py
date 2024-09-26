@@ -288,6 +288,11 @@ class NRR:
                         if include_file_names:
                             ranks.at[index, file_name_column] = text_match.iloc[0][file_name_column]
 
+                # Initialize similarity columns
+                similarity_columns = ['fuzzy_matching', 'jaro_winkler', 'smith_waterman', 'lcs']
+                for col in similarity_columns:
+                    ranks[col] = 0.0
+                
                 # Parallelize similarity calculations
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     futures = {
