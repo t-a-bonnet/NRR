@@ -143,19 +143,42 @@ def extract_object_title(json_ld):
         print(f"Error extracting object title: {e}")
         return None
 
-# Function to extract creator name from linked art
+# Function to extract creator name from JSON-LD
 def extract_creator_name(json_ld):
+    creator_uri = None
     try:
+        # Check if produced_by exists and if 'part' or 'carried_out_by' is present
         produced_by = json_ld.get('produced_by', {})
-        if isinstance(produced_by, dict):
+
+        if 'part' in produced_by:
+            # Extract the ID from 'carried_out_by' within 'part'
+            for part in produced_by['part']:
+                carried_out_by = part.get('carried_out_by', {})
+                if 'id' in carried_out_by:
+                    creator_uri = carried_out_by['id']
+                    break
+        elif 'carried_out_by' in produced_by:
             carried_out_by = produced_by.get('carried_out_by', {})
-            if isinstance(carried_out_by, dict):
-                identified_by = carried_out_by.get('identified_by', [])
-                for item in identified_by:
-                    if item.get('type') == 'Name':
-                        return item.get('content')
-        print("Creator name not found.")
+            if 'id' in carried_out_by:
+                creator_uri = carried_out_by['id']
+
+        # If no creator URI was found
+        if not creator_uri:
+            print("No creator URI found.")
+            return None
+
+        # Fetch creator JSON-LD data
+        creator_data = fetch_json_ld(creator_uri)
+        if creator_data:
+            # Extract the first name (content) from the fetched creator data
+            identified_by = creator_data.get('identified_by', [])
+            for item in identified_by:
+                if item.get('content'):
+                    return item['content']
+
+        print("Creator name not found in the fetched creator data.")
         return None
+
     except KeyError as e:
         print(f"Error extracting creator name: {e}")
         return None
