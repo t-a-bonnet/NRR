@@ -12,6 +12,7 @@ import pdfplumber
 import pytesseract
 import shutil
 import re
+import requests
 import string as st
 import urllib.request
 
@@ -114,6 +115,50 @@ def preprocess_text(text):
 
 def get_files_list(path):
     return [file for file in glob.glob(path, recursive=True) if os.path.isfile(file) and '__MACOSX' not in file and not file.startswith('._')]
+
+# Helper function to fetch JSON-LD data from a given URI
+def fetch_json_ld(uri):
+    headers = {'Accept': 'application/ld+json'}
+    try:
+        response = requests.get(uri, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Failed to fetch JSON-LD from {uri}, status code: {response.status_code}")
+            return None
+    except requests.RequestException as e:
+        print(f"An error occurred while fetching data from {uri}: {e}")
+        return None
+
+# Function to extract object_title from linked art
+def extract_object_title(json_ld):
+    try:
+        identified_by = json_ld.get('identified_by', [])
+        for item in identified_by:
+            if item.get('type') == 'Name':
+                return item.get('content')
+        print("Object title not found.")
+        return None
+    except KeyError as e:
+        print(f"Error extracting object title: {e}")
+        return None
+
+# Function to extract creator name from linked art
+def extract_creator_name(json_ld):
+    try:
+        produced_by = json_ld.get('produced_by', {})
+        if isinstance(produced_by, dict):
+            carried_out_by = produced_by.get('carried_out_by', {})
+            if isinstance(carried_out_by, dict):
+                identified_by = carried_out_by.get('identified_by', [])
+                for item in identified_by:
+                    if item.get('type') == 'Name':
+                        return item.get('content')
+        print("Creator name not found.")
+        return None
+    except KeyError as e:
+        print(f"Error extracting creator name: {e}")
+        return None
 
 class NRR:
     def __init__(self, index_path, mlp_model_path='nrr_mlp.pt', model_url='https://github.com/t-a-bonnet/NRR/blob/main/nrr/nrr_mlp.pt?raw=true'):
@@ -336,4 +381,34 @@ class NRR:
         df = df[df['query'].apply(filter_common_words)]
         df.reset_index(drop=True, inplace=True)
 
+        return df
+    
+    # Function to process structured data to form queries
+    def structured_data_to_query(self, df):
+        # Add new columns to store the extracted object title and creator name
+        df['object_title'] = None
+        df['creator_name'] = None
+        
+        # Loop over each row in the DataFrame
+        for idx, row in df.iterrows():
+            linked_art_uri = row['linked_art_uri']
+            
+            # Fetch the JSON-LD data from the URI
+            json_ld_data = fetch_json_ld(linked_art_uri)
+            
+            if json_ld_data:
+                # Extract object title and creator name
+                object_title = extract_object_title(json_ld_data)
+                creator_name = extract_creator_name(json_ld_data)
+                
+                # Store the results in the respective columns
+                df.at[idx, 'object_title'] = object_title
+                df.at[idx, 'creator_name'] = creator_name
+
+        # Create 'query' column by concatenating 'object_title' and 'creator_name'
+        df['query'] = df.apply(lambda row: f"{row['object_title']} {row['creator_name']}".strip() if row['object_title'] and row['creator_name'] else None, axis=1)
+        
+        # Drop 'object_title' and 'creator_name' columns
+        df.drop(columns=['object_title', 'creator_name'], inplace=True)
+        
         return df
