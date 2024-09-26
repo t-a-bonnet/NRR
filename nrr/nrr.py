@@ -54,6 +54,9 @@ class MLP(nn.Module):
 def calculate_fuzzy_matching_score(query, text):
     return fuzz.token_set_ratio(query, text)
 
+def calculate_jaro_winkler_distance(query, text):
+    return textdistance.jaro_winkler(query, text)
+
 def calculate_smith_waterman_similarity(query, text):
     matrix = [[0] * (len(str(text)) + 1) for _ in range(len(str(query)) + 1)]
     max_score = 0
@@ -174,17 +177,18 @@ class NRR:
         br.setControl('wmodel', 'LGD')
 
         # Similarity score means
-        retrieval_score_mean = 23.824547841344483
         fuzzy_matching_mean = 91.57859531772576
+        jaro_winkler_mean = 0.5251933067625418
         smith_waterman_mean = 45.26086956521739
         lcs_mean = 43.03010033444816
 
         def calculate_similarities(row, query):
             # Calculate all similarities for a given row
             fuzzy_matching = calculate_fuzzy_matching_score(query, row['text'])
+            jaro_winkler = calculate_jaro_winkler_distance(query, row['text'])
             smith_waterman = calculate_smith_waterman_similarity(query, row['text'])
             lcs = calculate_lcs(query, row['text'])
-            return fuzzy_matching, smith_waterman, lcs
+            return fuzzy_matching, jaro_winkler, smith_waterman, lcs
 
         def search_and_classify(query_df, num_results, text_df):
             results_dict = {}
@@ -225,21 +229,22 @@ class NRR:
                     for future in concurrent.futures.as_completed(futures):
                         index = futures[future]
                         try:
-                            fuzzy_matching, smith_waterman, lcs = future.result()
+                            fuzzy_matching, jaro_winkler, smith_waterman, lcs = future.result()
                             ranks.at[index, 'fuzzy_matching'] = fuzzy_matching
+                            ranks.at[index, 'jaro_winkler'] = jaro_winkler
                             ranks.at[index, 'smith_waterman'] = smith_waterman
                             ranks.at[index, 'lcs'] = lcs
                         except Exception as e:
                             print(f"Error calculating similarities for row {index}: {e}")
 
                 # Create features by subtracting the means
-                ranks['retrieval_score_feature'] = ranks['ret_score'] - retrieval_score_mean
                 ranks['fuzzy_matching_feature'] = ranks['fuzzy_matching'] - fuzzy_matching_mean
+                ranks['jaro_winkler_feature'] = ranks['jaro_winkler'] - jaro_winkler_mean
                 ranks['smith_waterman_feature'] = ranks['smith_waterman'] - smith_waterman_mean
                 ranks['lcs_feature'] = ranks['lcs'] - lcs_mean
 
                 # Prepare input features for the model
-                features = ranks[['retrieval_score_feature', 'fuzzy_matching_feature', 'smith_waterman_feature', 'lcs_feature']].values
+                features = ranks[['fuzzy_matching_feature', 'jaro_winkler_feature', 'smith_waterman_feature', 'lcs_feature']].values
                 features_tensor = torch.tensor(features, dtype=torch.float32)
 
                 # Perform classification
