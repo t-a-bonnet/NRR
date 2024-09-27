@@ -259,7 +259,8 @@ class NRR:
             return fuzzy_matching, jaro_winkler, smith_waterman, lcs
 
         def search_and_classify(query_df, num_results, text_df):
-            results_dict = {}
+            # Create an empty list to store all results
+            all_results = []
             
             for _, query_row in query_df.iterrows():
                 qid = query_row['qid']
@@ -328,16 +329,14 @@ class NRR:
                 # Add predictions to results
                 ranks['prediction'] = preds
 
-                # Reset index and store in dictionary
+                # Reset index and add to the list of all results
                 ranks.reset_index(drop=True, inplace=True)
-                results_dict[qid] = ranks
+                all_results.append(ranks)
 
-                # Convert dict to dataframe
-                results_df = pd.DataFrame(results_dict)
+            # Concatenate all DataFrames in the list to return a single DataFrame
+            return pd.concat(all_results, ignore_index=True)
 
-            return results_df
-
-        # Call search and clssify function and return the results
+        # Call the function to search and classify and return the results
         return search_and_classify(query_df, num_results=10, text_df=text_df)
 
     def ocr(self, directory):
