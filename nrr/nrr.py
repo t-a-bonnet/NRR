@@ -184,7 +184,7 @@ def extract_creator_name(json_ld):
         return None
 
 class NRR:
-    def __init__(self, index_path, mlp_model_path='nrr_mlp.pt', model_url='https://github.com/t-a-bonnet/NRR/blob/main/nrr/nrr_mlp.pt?raw=true'):
+    def __init__(self, index_path, mlp_model_path='nrr_mlp.pt', model_url='https://github.com/t-a-bonnet/NRR/raw/refs/heads/main/nrr/nrr_mlp'):
         # Initialize PyTerrier
         pt.init()
 
