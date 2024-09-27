@@ -334,7 +334,15 @@ class NRR:
                 all_results.append(ranks)
 
             # Concatenate all DataFrames in the list to return a single DataFrame
-            return pd.concat(all_results, ignore_index=True)
+            final_df = pd.concat(all_results, ignore_index=True)
+
+            # Drop the specified columns from the final dataframe
+            final_df.drop(columns=[
+                'ret_score', 'fuzzy_matching', 'jaro_winkler', 'smith_waterman', 'lcs',
+                'fuzzy_matching_feature', 'jaro_winkler_feature', 'smith_waterman_feature', 'lcs_feature'
+            ], inplace=True)
+
+            return final_df
 
         # Call the function to search and classify and return the results
         return search_and_classify(query_df, num_results=10, text_df=text_df)
