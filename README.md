@@ -38,6 +38,53 @@ cd nrr
 pip install -r requirements.txt
 ```
 
+## Example Usage
+
+### Import and Initialize
+
+```python
+from nrr import NRR
+nrr = NRR(index_path='./pd_index')
+```
+
+### Entity Matching
+
+```python
+results = nrr.match(query_df, text_df)
+```
+
+where query_df is a dataframe of queries in a column called 'query' and numerical query ids in a column called 'qids', and where text_df is a dataframe of texts in a column called 'text' and numerical document numbers in a column called 'docnos'.
+
+### Preprocessing
+
+#### Linked Art to Query
+
+```python
+query_df = nrr.structured_data_to_query(structured_data_df)
+```
+
+where structured_data_df is a dataframe of Linked Art URIs in a column called 'linked_art_uri'.
+
+#### Extract Machine Readable Text from PDF
+
+```python
+text_df = nrr.extract('directory/to/files')
+```
+
+#### Extract Text from Image Files or PDF Using OCR
+
+```python
+text_df = nrr.ocr('directory/to/files')
+```
+
+### Postprocessing
+
+```python
+results = nrr.postprocess(results)
+```
+
+where results is a dataframe with a column called 'query'.
+
 ## Google Colab Tutorial
 
 For a comprehensive demonstration of NRR and a step-by-step guide on its usage, please refer to the [Google Colab tutorial](https://colab.research.google.com/drive/1pwWTMatqy-sxB5etYUMTkXN5uqCd5pyg#scrollTo=D8_nd5tyNEcq).
