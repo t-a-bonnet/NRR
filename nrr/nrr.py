@@ -393,7 +393,7 @@ class NRR:
                         text = page.extract_text()
                         if text:
                             text = text.replace('\n', ' ')
-                            rows.append({'file': f"{file}/page_{page}", 'text': text})
+                            rows.append({'file': f"{file}/page_{page.page_number}", 'text': text})
             except Exception as e:
                 print(f"Error processing {file}: {e}")
 
