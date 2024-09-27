@@ -332,7 +332,10 @@ class NRR:
                 ranks.reset_index(drop=True, inplace=True)
                 results_dict[qid] = ranks
 
-            return results_dict
+                # Convert dict to dataframe
+                results_df = pd.DataFrame(results_dict)
+
+            return results_df
 
         # Call search and clssify function and return the results
         return search_and_classify(query_df, num_results=10, text_df=text_df)
