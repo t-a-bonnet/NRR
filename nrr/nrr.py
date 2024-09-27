@@ -196,7 +196,7 @@ class NRR:
 
         # Define and load the MLP model
         self.input_size = 4 
-        self.hidden_size = 64
+        self.hidden_size = 52
         self.model = MLP(input_size=self.input_size, hidden_size=self.hidden_size, output_size=1)
         self.model.load_state_dict(torch.load(mlp_model_path, map_location=torch.device('cpu')))
         self.model.eval()
