@@ -1,4 +1,4 @@
-# NRR: Neural Retrieval Refinement for Entity Matching in Cultural Heritage
+# NRR: Neural Retrieval Refinement for Entity Matching
 
 ## Overview
 
