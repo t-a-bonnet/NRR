@@ -201,7 +201,7 @@ class NRR:
         self.model.load_state_dict(torch.load(mlp_model_path, map_location=torch.device('cpu')))
         self.model.eval()
 
-    def search(self, query_df, text_df, include_file_names=False, file_name_column=None):
+    def match(self, query_df, text_df, include_file_names=False, file_name_column=None):
         # Check if 'qid' column exists in query_df
         if 'qid' not in query_df.columns:
             raise ValueError("Error: 'qid' column is missing in query_df. Please add the column and try again.")
@@ -334,7 +334,7 @@ class NRR:
 
             return results_dict
 
-        # Call the search function and return the results
+        # Call search and clssify function and return the results
         return search_and_classify(query_df, num_results=10, text_df=text_df)
 
     def ocr(self, directory):
