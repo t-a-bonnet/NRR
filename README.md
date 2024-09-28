@@ -102,6 +102,10 @@ In this function:
    - 'text_df' is a pandas DataFrame that contains:
        - A column named 'text', which holds the text documents.
        - A column named 'docno', which contains numerical document IDs.
+   - Optional Arguments:
+       - num_results (int): Specifies the maximum number of results returned by the retrieval model for each query. The default value is 50.
+       - include_file_names (bool): If set to True, the function will include file names in the output results. The default value is False.
+       - file_name_column (str): The name of the column containing file names, required only if include_file_names is set to True.
 
 The nrr.match() function will match entities between these two DataFrames based on the provided queries and texts.
 
