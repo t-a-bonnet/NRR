@@ -378,7 +378,12 @@ class NRR:
                     print(f"Error processing PDF {file}: {e}")
 
         # Convert results to DataFrame
-        return pd.DataFrame(rows)
+        df = pd.DataFrame(rows)
+
+        # Add docno column
+        df['docno'] = df.index+1
+
+        return df
 
     def extract(self, directory):
         rows = []
@@ -397,7 +402,13 @@ class NRR:
             except Exception as e:
                 print(f"Error processing {file}: {e}")
 
-        return pd.DataFrame(rows)
+        # Convert results to DataFrame
+        df = pd.DataFrame(rows)
+
+        # Add docno column
+        df['docno'] = df.index+1
+
+        return df
 
     def postprocess(self, df):
         # Function to preprocess queries by removing stopwords
@@ -451,5 +462,8 @@ class NRR:
         
         # Drop 'object_title' and 'creator_name' columns
         df.drop(columns=['object_title', 'creator_name'], inplace=True)
+
+        # Add qid column
+        df['qid'] = df.index+1
         
         return df

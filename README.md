@@ -59,7 +59,7 @@ query_df = nrr.structured_data_to_query(structured_data_df)
 
 In this function:
 
-   - structured_data_df is a pandas DataFrame that contains:
+   - 'structured_data_df' is a pandas DataFrame that contains:
        - A column named 'linked_art_uri', which holds the Linked Art URIs.
 
 The nrr.structured_data_to_query() function retrieves the Linked Art JSON-LD records for the specified URIs, extracts the object titles and creator names, and constructs queries by concatenating them. The resulting queries are organized into a DataFrame with a column called 'query'.
@@ -96,10 +96,10 @@ results = nrr.match(query_df, text_df)
 
 In this function:
 
-   - query_df is a pandas DataFrame that contains:
+   - 'query_df' is a pandas DataFrame that contains:
        - A column named 'query', which holds the query text.
        - A column named 'qid', which contains numerical query IDs.
-   - text_df is a pandas DataFrame that contains:
+   - 'text_df' is a pandas DataFrame that contains:
        - A column named 'text', which holds the text documents.
        - A column named 'docno', which contains numerical document IDs.
 
@@ -113,7 +113,7 @@ results = nrr.postprocess(results)
 
 In this function:
 
-   - results is a pandas DataFrame that contains:
+   - 'results' is a pandas DataFrame that contains:
        - A column named ‘query’, which holds the original query text.
        - Other columns containing the matching results and their corresponding details.
 
