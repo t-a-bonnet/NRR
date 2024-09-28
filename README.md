@@ -8,7 +8,7 @@
 
 ### 1. **Preprocessing**: 
    - **Query Generation**: Automatically generate queries from Linked Art using URIs.
-   - **Text Extraction**: Extract text from various file types including PDFs, JPGs, JPEGs, and PNGs, preparing them for the retrieval and matching stages.
+   - **Text Extraction**: Extract text from various file types including PDFs, JPGs, JPEGs, and PNGs, preparing them for entity matching.
 
 ### 2. **Entity Matching**
 
@@ -16,11 +16,11 @@
    NRR uses the Log-Logistic (LGD) retrieval model (Clinchant and Gaussier, 2009) to generate candidate matches for a given query.
 
    - **Similarity Measures**: 
-   After retrieval, NRR computes similarity measures for each query-text pair:
-       - Fuzzy Matching Score (Levenshtein Distance)
-       - Smith-Waterman Algorithm
-       - Jaro-Winkler Distance
-       - Longest Common Subsequence
+   After retrieval, NRR computes similarity measures for each query-text pair in the LGD search results:
+	•	Fuzzy Matching Score (Levenshtein Distance)
+	•	Smith-Waterman Algorithm
+	•	Jaro-Winkler Distance
+	•	Longest Common Subsequence
    
         Features derived from these similarity measures are used as inputs for the classifier.
 
@@ -55,7 +55,16 @@ nrr = NRR(index_path='./pd_index')
 results = nrr.match(query_df, text_df)
 ```
 
-where query_df is a dataframe of queries in a column called 'query' and numerical query ids in a column called 'qids', and where text_df is a dataframe of texts in a column called 'text' and numerical document numbers in a column called 'docnos'.
+In this function:
+
+   - query_df is a pandas DataFrame that contains:
+	•	A column named 'query', which holds the query text.
+	•	A column named 'qids', which contains numerical query IDs.
+   - text_df is a pandas DataFrame that contains:
+	•	A column named 'text', which holds the text documents.
+	•	A column named 'docnos', which contains numerical document IDs.
+
+The nrr.match() function will match entities between these two DataFrames based on the provided queries and documents.
 
 ### Preprocessing
 
@@ -65,7 +74,12 @@ where query_df is a dataframe of queries in a column called 'query' and numerica
 query_df = nrr.structured_data_to_query(structured_data_df)
 ```
 
-where structured_data_df is a dataframe of Linked Art URIs in a column called 'linked_art_uri'.
+In this function:
+
+   - structured_data_df is a pandas DataFrame that contains:
+	•	A column named 'linked_art_uri', which holds the Linked Art URIs.
+
+The nrr.structured_data_to_query() function transforms the Linked Art URIs from the structured_data_df into a DataFrame suitable for querying.
 
 #### Extract Machine Readable Text from PDF
 
