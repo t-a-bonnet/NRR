@@ -13,7 +13,7 @@
 ### 2. **Entity Matching**
 
    - **LGD Retrieval Model**: 
-   NRR uses the Log-Logistic (LGD) retrieval model to generate candidate matches for a given query.
+   NRR uses the Log-Logistic (LGD) retrieval model (Clinchant and Gaussier, 2009) to generate candidate matches for a given query.
 
    - **Similarity Measures**: 
    After retrieval, NRR computes similarity measures for each query-text pair:
@@ -90,6 +90,10 @@ where results is a dataframe with a column called 'query'.
 ## Google Colab Tutorial
 
 For a comprehensive demonstration of NRR and a step-by-step guide on its usage, please refer to the [Google Colab tutorial](https://colab.research.google.com/drive/1pwWTMatqy-sxB5etYUMTkXN5uqCd5pyg#scrollTo=D8_nd5tyNEcq).
+
+## References
+
+- Clinchant, Stéphane and Gaussier, Eric. (2009) ‘Bridging language modeling and divergence from randomness models: A log-logistic model for IR’ in *Conference on the Theory of Information Retrieval*, pp. 54-65.
 
 ## License
 
