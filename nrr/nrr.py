@@ -181,98 +181,6 @@ def calculate_similarities(row, query):
     lcs = calculate_lcs(query, row['text'])
     return fuzzy_matching, jaro_winkler, smith_waterman, lcs
 
-# Postitive class means of similarity scores in MLP training data
-fuzzy_matching_mean = 91.57859531772576
-jaro_winkler_mean = 0.5251933067625418
-smith_waterman_mean = 45.26086956521739
-lcs_mean = 43.03010033444816
-
-def search_and_classify(query_df, num_results, text_df):
-    # Initialize results list
-    all_results = []
-    
-    for _, query_row in query_df.iterrows():
-        qid = query_row['qid']
-        query = query_row['query']
-
-        # Perform the retrieval using PyTerrier
-        ranks = br.search(query)
-        ranks = ranks[:num_results]
-        ranks['qid'] = qid
-        ranks['query'] = ''
-        ranks['text'] = ''
-        if include_file_names:
-            ranks[file_name_column] = ''
-
-        ranks = ranks.sort_values(by=['score'], ascending=False)
-        ranks.rename(columns={'score': 'ret_score'}, inplace=True)
-        ranks.drop(columns={'docid', 'rank'}, inplace=True)
-
-        # Fill in the query, text, and optionally file name columns
-        for index, row in ranks.iterrows():
-            ranks.at[index, 'query'] = query
-            docno = row['docno']
-            text_match = text_df[text_df['docno'] == docno]
-            if not text_match.empty:
-                ranks.at[index, 'text'] = text_match.iloc[0]['text']
-                if include_file_names:
-                    ranks.at[index, file_name_column] = text_match.iloc[0][file_name_column]
-
-        # Initialize similarity score columns
-        similarity_columns = ['fuzzy_matching', 'jaro_winkler', 'smith_waterman', 'lcs']
-        for col in similarity_columns:
-            ranks[col] = 0.0
-        
-        # Parallelize similarity calculations
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            futures = {
-                executor.submit(calculate_similarities, row, query): index for index, row in ranks.iterrows()
-            }
-
-            for future in concurrent.futures.as_completed(futures):
-                index = futures[future]
-                try:
-                    fuzzy_matching, jaro_winkler, smith_waterman, lcs = future.result()
-                    ranks.at[index, 'fuzzy_matching'] = fuzzy_matching
-                    ranks.at[index, 'jaro_winkler'] = jaro_winkler
-                    ranks.at[index, 'smith_waterman'] = smith_waterman
-                    ranks.at[index, 'lcs'] = lcs
-                except Exception as e:
-                    print(f"Error calculating similarities for row {index}: {e}")
-
-        # Create features by subtracting the means from similarity scores
-        ranks['fuzzy_matching_feature'] = ranks['fuzzy_matching'] - fuzzy_matching_mean
-        ranks['jaro_winkler_feature'] = ranks['jaro_winkler'] - jaro_winkler_mean
-        ranks['smith_waterman_feature'] = ranks['smith_waterman'] - smith_waterman_mean
-        ranks['lcs_feature'] = ranks['lcs'] - lcs_mean
-
-        # Prepare input features for the MLP model
-        features = ranks[['fuzzy_matching_feature', 'jaro_winkler_feature', 'smith_waterman_feature', 'lcs_feature']].values
-        features_tensor = torch.tensor(features, dtype=torch.float32)
-
-        # Perform classification
-        with torch.no_grad():
-            outputs = self.model(features_tensor)
-            preds = torch.round(torch.sigmoid(outputs)).squeeze().cpu().numpy()
-
-        # Add predictions to results
-        ranks['prediction'] = preds
-
-        # Reset index and add to the list of results
-        ranks.reset_index(drop=True, inplace=True)
-        all_results.append(ranks)
-
-    # Concatenate all DataFrames in the list to return a single DataFrame
-    final_df = pd.concat(all_results, ignore_index=True)
-
-    # Drop the specified columns from the final dataframe
-    final_df.drop(columns=[
-        'ret_score', 'fuzzy_matching', 'jaro_winkler', 'smith_waterman', 'lcs',
-        'fuzzy_matching_feature', 'jaro_winkler_feature', 'smith_waterman_feature', 'lcs_feature'
-    ], inplace=True)
-
-    return final_df
-
 # Function to remove stopwords
 def remove_stopwords(query):
     words = query.split()
@@ -434,6 +342,98 @@ class NRR:
         # Set up the retrieval model
         br = pt.BatchRetrieve(index, controls={'wmodel': 'LGD', 'max_results': num_results})
         br.setControl('wmodel', 'LGD')
+
+        # Postitive class means of similarity scores in MLP training data
+        fuzzy_matching_mean = 91.57859531772576
+        jaro_winkler_mean = 0.5251933067625418
+        smith_waterman_mean = 45.26086956521739
+        lcs_mean = 43.03010033444816
+
+        def search_and_classify(query_df, num_results, text_df):
+            # Initialize results list
+            all_results = []
+            
+            for _, query_row in query_df.iterrows():
+                qid = query_row['qid']
+                query = query_row['query']
+
+                # Perform the retrieval using PyTerrier
+                ranks = br.search(query)
+                ranks = ranks[:num_results]
+                ranks['qid'] = qid
+                ranks['query'] = ''
+                ranks['text'] = ''
+                if include_file_names:
+                    ranks[file_name_column] = ''
+
+                ranks = ranks.sort_values(by=['score'], ascending=False)
+                ranks.rename(columns={'score': 'ret_score'}, inplace=True)
+                ranks.drop(columns={'docid', 'rank'}, inplace=True)
+
+                # Fill in the query, text, and optionally file name columns
+                for index, row in ranks.iterrows():
+                    ranks.at[index, 'query'] = query
+                    docno = row['docno']
+                    text_match = text_df[text_df['docno'] == docno]
+                    if not text_match.empty:
+                        ranks.at[index, 'text'] = text_match.iloc[0]['text']
+                        if include_file_names:
+                            ranks.at[index, file_name_column] = text_match.iloc[0][file_name_column]
+
+                # Initialize similarity score columns
+                similarity_columns = ['fuzzy_matching', 'jaro_winkler', 'smith_waterman', 'lcs']
+                for col in similarity_columns:
+                    ranks[col] = 0.0
+                
+                # Parallelize similarity calculations
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = {
+                        executor.submit(calculate_similarities, row, query): index for index, row in ranks.iterrows()
+                    }
+
+                    for future in concurrent.futures.as_completed(futures):
+                        index = futures[future]
+                        try:
+                            fuzzy_matching, jaro_winkler, smith_waterman, lcs = future.result()
+                            ranks.at[index, 'fuzzy_matching'] = fuzzy_matching
+                            ranks.at[index, 'jaro_winkler'] = jaro_winkler
+                            ranks.at[index, 'smith_waterman'] = smith_waterman
+                            ranks.at[index, 'lcs'] = lcs
+                        except Exception as e:
+                            print(f"Error calculating similarities for row {index}: {e}")
+
+                # Create features by subtracting the means from similarity scores
+                ranks['fuzzy_matching_feature'] = ranks['fuzzy_matching'] - fuzzy_matching_mean
+                ranks['jaro_winkler_feature'] = ranks['jaro_winkler'] - jaro_winkler_mean
+                ranks['smith_waterman_feature'] = ranks['smith_waterman'] - smith_waterman_mean
+                ranks['lcs_feature'] = ranks['lcs'] - lcs_mean
+
+                # Prepare input features for the MLP model
+                features = ranks[['fuzzy_matching_feature', 'jaro_winkler_feature', 'smith_waterman_feature', 'lcs_feature']].values
+                features_tensor = torch.tensor(features, dtype=torch.float32)
+
+                # Perform classification
+                with torch.no_grad():
+                    outputs = self.model(features_tensor)
+                    preds = torch.round(torch.sigmoid(outputs)).squeeze().cpu().numpy()
+
+                # Add predictions to results
+                ranks['prediction'] = preds
+
+                # Reset index and add to the list of results
+                ranks.reset_index(drop=True, inplace=True)
+                all_results.append(ranks)
+
+            # Concatenate all DataFrames in the list to return a single DataFrame
+            final_df = pd.concat(all_results, ignore_index=True)
+
+            # Drop the specified columns from the final dataframe
+            final_df.drop(columns=[
+                'ret_score', 'fuzzy_matching', 'jaro_winkler', 'smith_waterman', 'lcs',
+                'fuzzy_matching_feature', 'jaro_winkler_feature', 'smith_waterman_feature', 'lcs_feature'
+            ], inplace=True)
+
+            return final_df
 
         return search_and_classify(query_df, num_results=num_results, text_df=text_df)
 
