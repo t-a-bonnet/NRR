@@ -59,10 +59,10 @@ In this function:
 
    - query_df is a pandas DataFrame that contains:
        - A column named 'query', which holds the query text.
-       - A column named 'qids', which contains numerical query IDs.
+       - A column named 'qid', which contains numerical query IDs.
    - text_df is a pandas DataFrame that contains:
        - A column named 'text', which holds the text documents.
-       - A column named 'docnos', which contains numerical document IDs.
+       - A column named 'docno', which contains numerical document IDs.
 
 The nrr.match() function will match entities between these two DataFrames based on the provided queries and documents.
 
