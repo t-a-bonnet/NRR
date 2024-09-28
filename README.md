@@ -58,11 +58,11 @@ results = nrr.match(query_df, text_df)
 In this function:
 
    - query_df is a pandas DataFrame that contains:
-	•	A column named 'query', which holds the query text.
-	•	A column named 'qids', which contains numerical query IDs.
+       - A column named 'query', which holds the query text.
+       - A column named 'qids', which contains numerical query IDs.
    - text_df is a pandas DataFrame that contains:
-	•	A column named 'text', which holds the text documents.
-	•	A column named 'docnos', which contains numerical document IDs.
+       - A column named 'text', which holds the text documents.
+       - A column named 'docnos', which contains numerical document IDs.
 
 The nrr.match() function will match entities between these two DataFrames based on the provided queries and documents.
 
@@ -77,7 +77,7 @@ query_df = nrr.structured_data_to_query(structured_data_df)
 In this function:
 
    - structured_data_df is a pandas DataFrame that contains:
-	•	A column named 'linked_art_uri', which holds the Linked Art URIs.
+       - A column named 'linked_art_uri', which holds the Linked Art URIs.
 
 The nrr.structured_data_to_query() function transforms the Linked Art URIs from the structured_data_df into a DataFrame suitable for querying.
 
