@@ -12,19 +12,19 @@
 
 ### 2. **Entity Matching**
 
-a. **LDG Retrieval Model**: 
+   - **LDG Retrieval Model**: 
    NRR uses the LDG retrieval model to generate candidate matches for a given query.
 
-b. **Similarity Measures**: 
+   - **Similarity Measures**: 
    After retrieval, NRR computes similarity measures for each query-text pair:
-   - **Fuzzy Matching Score (Levenshtein Distance)**
-   - **Smith-Waterman Algorithm**
-   - **Jaro-Winkler Distance**
-   - **Longest Common Subsequence**
+       - Fuzzy Matching Score (Levenshtein Distance)
+       - Smith-Waterman Algorithm
+       - Jaro-Winkler Distance
+       - Longest Common Subsequence
    
    Features derived from these similarity measures are used as inputs for the classifier.
 
-c. **MLP Neural Network Classifier**: 
+   - **MLP Neural Network Classifier**: 
    NRR uses a neural network classifier, trained on approximately 8,000 annotated query-text pairs, to predict the final matches. The classifier learned to assess if a query-text pair is a match based on the derived similarity features.
 
 ### 4. **Postprocessing**: 
