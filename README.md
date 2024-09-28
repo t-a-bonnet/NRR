@@ -49,6 +49,45 @@ from nrr import NRR
 nrr = NRR(index_path='./pd_index')
 ```
 
+### Preprocessing
+
+#### Linked Art to Query
+
+```python
+query_df = nrr.structured_data_to_query(structured_data_df)
+```
+
+In this function:
+
+   - structured_data_df is a pandas DataFrame that contains:
+       - A column named 'linked_art_uri', which holds the Linked Art URIs.
+
+The nrr.structured_data_to_query() function retrieves the Linked Art JSON-LD records for the specified URIs, extracts the object titles and creator names, and constructs queries by concatenating them. The resulting queries are organized into a DataFrame with a column called 'query'.
+
+#### Extract Machine Readable Text from PDF
+
+```python
+text_df = nrr.extract('directory/to/files')
+```
+
+In this function:
+
+   - 'directory/to/files' is the path to the folder containing the PDF files from which text will be extracted.
+
+The nrr.extract() function scans the specified directory for PDF files and extracts the text from each page of these files. The extracted text is organized into a DataFrame, where each entry includes the file path and the corresponding text content.
+
+#### Extract Text from Image Files or PDF Using OCR
+
+```python
+text_df = nrr.ocr('directory/to/files')
+```
+
+In this function:
+
+   - 'directory/to/files' is the path to the folder containing image and PDF files from which text will be extracted.
+
+The nrr.ocr() function processes all files in the specified directory, applying Optical Character Recognition (OCR) to extract text from supported image formats (JPG, JPEG, PNG) and PDF files. The extracted text is compiled into a DataFrame, with each entry containing the file path and the associated text content.
+
 ### Entity Matching
 
 ```python
@@ -64,34 +103,7 @@ In this function:
        - A column named 'text', which holds the text documents.
        - A column named 'docno', which contains numerical document IDs.
 
-The nrr.match() function will match entities between these two DataFrames based on the provided queries and documents.
-
-### Preprocessing
-
-#### Linked Art to Query
-
-```python
-query_df = nrr.structured_data_to_query(structured_data_df)
-```
-
-In this function:
-
-   - structured_data_df is a pandas DataFrame that contains:
-       - A column named 'linked_art_uri', which holds the Linked Art URIs.
-
-The nrr.structured_data_to_query() function transforms the Linked Art URIs from the structured_data_df into a DataFrame suitable for querying.
-
-#### Extract Machine Readable Text from PDF
-
-```python
-text_df = nrr.extract('directory/to/files')
-```
-
-#### Extract Text from Image Files or PDF Using OCR
-
-```python
-text_df = nrr.ocr('directory/to/files')
-```
+The nrr.match() function will match entities between these two DataFrames based on the provided queries and texts.
 
 ### Postprocessing
 
@@ -99,7 +111,13 @@ text_df = nrr.ocr('directory/to/files')
 results = nrr.postprocess(results)
 ```
 
-where results is a dataframe with a column called 'query'.
+In this function:
+
+   - results is a pandas DataFrame that contains:
+       - A column named ‘query’, which holds the original query text.
+       - Other columns containing the matching results and their corresponding details.
+
+The nrr.postprocess() function refines the results by filtering out matches to one-word queries consisting of common words based on term frequency.
 
 ## Google Colab Tutorial
 
