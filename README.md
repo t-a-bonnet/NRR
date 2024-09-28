@@ -6,26 +6,28 @@
 
 ## Features
 
-1. **LDG Retrieval Model**: 
+### 1. **Preprocessing**: 
+   - **Query Generation**: Automatically generate queries from Linked Art using URIs.
+   - **Text Extraction**: Extract text from various file types including PDFs, JPGs, JPEGs, and PNGs, preparing them for the retrieval and matching stages.
+
+### 2. **Entity Matching**
+
+a. **LDG Retrieval Model**: 
    NRR uses the LDG retrieval model to generate candidate matches for a given query.
 
-2. **Similarity Measures**: 
+b. **Similarity Measures**: 
    After retrieval, NRR computes similarity measures for each query-text pair:
-   - **Fuzzy Matching Score** (Levenshtein Distance)
+   - **Fuzzy Matching Score (Levenshtein Distance)**
    - **Smith-Waterman Algorithm**
    - **Jaro-Winkler Distance**
    - **Longest Common Subsequence**
    
    Features derived from these similarity measures are used as inputs for the classifier.
 
-3. **MLP Neural Network Classifier**: 
+c. **MLP Neural Network Classifier**: 
    NRR uses a neural network classifier, trained on approximately 8,000 annotated query-text pairs, to predict the final matches. The classifier learned to assess if a query-text pair is a match based on the derived similarity features.
 
-4. **Preprocessing Pipelines**: 
-   - **Query Generation**: Automatically generate queries from Linked Art using URIs.
-   - **Text Extraction**: Extract text from various file types including PDFs, JPGs, JPEGs, and PNGs, preparing them for the retrieval and matching stages.
-
-5. **Postprocessing and Filtering**: 
+### 4. **Postprocessing**: 
    Remove matches where the query consists of only one word with a high term frequency, which is useful for large datasets containing ambiguous or non-descriptive terms such as "fragment" or "panel."
 
 ## Installation
