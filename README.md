@@ -12,8 +12,8 @@
 
 ### 2. **Entity Matching**
 
-   - **LDG Retrieval Model**: 
-   NRR uses the LDG retrieval model to generate candidate matches for a given query.
+   - **LGD Retrieval Model**: 
+   NRR uses the Log-Logistic (LGD) retrieval model to generate candidate matches for a given query.
 
    - **Similarity Measures**: 
    After retrieval, NRR computes similarity measures for each query-text pair:
@@ -93,4 +93,13 @@ For a comprehensive demonstration of NRR and a step-by-step guide on its usage, 
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+The NRR code is licensed under the MIT License.
+
+However, this project also depends on PyTerrier, which is licensed under the Mozilla Public License 2.0 (MPL 2.0). When distributing this project, you must comply with the terms of both licenses.
+
+- MIT License applies to the NRR code.
+- MPL 2.0 applies to the PyTerrier code.
+
+For more information, refer to:
+- [MIT License](./LICENSE)
+- [Mozilla Public License Version 2.0](http://mozilla.org/MPL/2.0/)
