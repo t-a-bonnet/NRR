@@ -2,7 +2,7 @@
 
 ## Overview
 
-**NRR (Neural Retrieval Refinement)** is an entity matching library designed to address the specific needs of the cultural heritage domain, with a focus on matching structured data (e.g. Linked Art) and unstructured full-text content (e.g. exhibition catalogues, newspaper texts, and blog posts). NRR combines retrieval and classification approaches to produce accurate entity matches using the PyTerrier information retrieval framework and a multi-layer perceptron (MLP) neural network classifier.
+**NRR (Neural Retrieval Refinement)** is an entity matching module designed to address the specific needs of the cultural heritage domain, with a focus on matching structured data (e.g. Linked Art) and unstructured full-text content (e.g. exhibition catalogues, newspaper texts, and blog posts). NRR combines retrieval and classification approaches to produce accurate entity matches using the PyTerrier information retrieval framework and a multi-layer perceptron (MLP) neural network classifier.
 
 ## Features
 
@@ -32,7 +32,7 @@
 
 ## Installation
 
-To install the NRR library, clone the repository and install the dependencies:
+To install the NRR module, clone the repository and install the dependencies:
 
 ```bash
 git clone https://github.com/t-a-bonnet/NRR.git
