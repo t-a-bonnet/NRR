@@ -201,7 +201,7 @@ class NRR:
         self.model.load_state_dict(torch.load(mlp_model_path, map_location=torch.device('cpu')))
         self.model.eval()
 
-    def match(self, query_df, text_df, include_file_names=False, file_name_column=None):
+    def match(self, query_df, text_df, num_results=50, include_file_names=False, file_name_column=None):
         # Check if 'qid' column exists in query_df
         if 'qid' not in query_df.columns:
             raise ValueError("Error: 'qid' column is missing in query_df. Please add the column and try again.")
@@ -241,7 +241,7 @@ class NRR:
         index = pd_indexer.index(text_df['text'], text_df['docno'])
 
         # Set up the retrieval model
-        br = pt.BatchRetrieve(index, controls={'wmodel': 'LGD', 'max_results': 100})
+        br = pt.BatchRetrieve(index, controls={'wmodel': 'LGD', 'max_results': num_results})
         br.setControl('wmodel', 'LGD')
 
         # Similarity score means
@@ -345,7 +345,7 @@ class NRR:
             return final_df
 
         # Call the function to search and classify and return the results
-        return search_and_classify(query_df, num_results=10, text_df=text_df)
+        return search_and_classify(query_df, num_results=num_results, text_df=text_df)
 
     def ocr(self, directory):
         rows = []
