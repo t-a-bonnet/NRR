@@ -27,10 +27,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
 from unidecode import unidecode
 
-# Download stopwords if not already downloaded
 nltk.download('stopwords')
-
-# Get English stopwords from NLTK
 stop_words = set(stopwords.words('english'))
 
 # Define the MLP model architecture
@@ -51,13 +48,15 @@ class MLP(nn.Module):
         x = self.fc3(x)
         return x
 
-
+# Function to calculate fuzzy matching score (Levenshtein distance)
 def calculate_fuzzy_matching_score(query, text):
     return fuzz.token_set_ratio(query, text)
 
+# Function to calculate Jaro-Winkler distance
 def calculate_jaro_winkler_distance(query, text):
     return textdistance.jaro_winkler(query, text)
 
+# Function to caluclate Smith-Waterman similarity
 def calculate_smith_waterman_similarity(query, text):
     matrix = [[0] * (len(str(text)) + 1) for _ in range(len(str(query)) + 1)]
     max_score = 0
@@ -88,6 +87,7 @@ def calculate_smith_waterman_similarity(query, text):
             max_j -= 1
     return distance
 
+# Function to calculate longest common subsequence
 def calculate_lcs(query, text):
     m = len(str(query))
     n = len(str(text))
@@ -100,6 +100,7 @@ def calculate_lcs(query, text):
                 lcs_matrix[i][j] = max(lcs_matrix[i-1][j], lcs_matrix[i][j-1])
     return lcs_matrix[m][n]
 
+# Function to preprocess text
 def preprocess_text(text):
     if not text or pd.isna(text):
         return None
@@ -113,10 +114,11 @@ def preprocess_text(text):
     text = re.sub(r'\s+', ' ', text)
     return text
 
+# Function to return a list of file paths from the specified directory
 def get_files_list(path):
     return [file for file in glob.glob(path, recursive=True) if os.path.isfile(file) and '__MACOSX' not in file and not file.startswith('._')]
 
-# Helper function to fetch JSON-LD data from a given URI
+# Function to fetch JSON-LD data from a given URI
 def fetch_json_ld(uri):
     headers = {'Accept': 'application/ld+json'}
     try:
@@ -143,51 +145,143 @@ def extract_object_title(json_ld):
         print(f"Error extracting object title: {e}")
         return None
 
-# Function to extract creator name from JSON-LD
+# Function to extract creator name from linked art
 def extract_creator_name(json_ld):
     creator_uri = None
     try:
-        # Check if produced_by exists
         produced_by = json_ld.get('produced_by', {})
-
-        # Attempt to retrieve creator ID from 'part' path
         if 'part' in produced_by and isinstance(produced_by['part'], list) and len(produced_by['part']) > 0:
             carried_out_by = produced_by['part'][0].get('carried_out_by', {})
             if isinstance(carried_out_by, list) and len(carried_out_by) > 0:
                 creator_uri = carried_out_by[0].get('id')
-
-        # If no creator URI found in 'part', check the direct path
         if not creator_uri:
             carried_out_by = produced_by.get('carried_out_by', {})
             if isinstance(carried_out_by, dict) and 'id' in carried_out_by:
                 creator_uri = carried_out_by['id']
-
-        # If no creator URI was found
         if not creator_uri:
             print("No creator URI found.")
             return None
-
-        # Fetch creator JSON-LD data
         creator_data = fetch_json_ld(creator_uri)
         if creator_data:
-            # Extract the first name (content) from the fetched creator data
             identified_by = creator_data.get('identified_by', [])
             for item in identified_by:
                 if item.get('content'):
                     return item['content']
-
         print("Creator name not found in the fetched creator data.")
         return None
-
     except KeyError as e:
         print(f"Error extracting creator name: {e}")
         return None
+    
+# Function to calculate similarity scores for a given row
+def calculate_similarities(row, query):
+    fuzzy_matching = calculate_fuzzy_matching_score(query, row['text'])
+    jaro_winkler = calculate_jaro_winkler_distance(query, row['text'])
+    smith_waterman = calculate_smith_waterman_similarity(query, row['text'])
+    lcs = calculate_lcs(query, row['text'])
+    return fuzzy_matching, jaro_winkler, smith_waterman, lcs
 
+# Postitive class means of similarity scores in MLP training data
+fuzzy_matching_mean = 91.57859531772576
+jaro_winkler_mean = 0.5251933067625418
+smith_waterman_mean = 45.26086956521739
+lcs_mean = 43.03010033444816
+
+def search_and_classify(query_df, num_results, text_df):
+    # Initialize results list
+    all_results = []
+    
+    for _, query_row in query_df.iterrows():
+        qid = query_row['qid']
+        query = query_row['query']
+
+        # Perform the retrieval using PyTerrier
+        ranks = br.search(query)
+        ranks = ranks[:num_results]
+        ranks['qid'] = qid
+        ranks['query'] = ''
+        ranks['text'] = ''
+        if include_file_names:
+            ranks[file_name_column] = ''
+
+        ranks = ranks.sort_values(by=['score'], ascending=False)
+        ranks.rename(columns={'score': 'ret_score'}, inplace=True)
+        ranks.drop(columns={'docid', 'rank'}, inplace=True)
+
+        # Fill in the query, text, and optionally file name columns
+        for index, row in ranks.iterrows():
+            ranks.at[index, 'query'] = query
+            docno = row['docno']
+            text_match = text_df[text_df['docno'] == docno]
+            if not text_match.empty:
+                ranks.at[index, 'text'] = text_match.iloc[0]['text']
+                if include_file_names:
+                    ranks.at[index, file_name_column] = text_match.iloc[0][file_name_column]
+
+        # Initialize similarity score columns
+        similarity_columns = ['fuzzy_matching', 'jaro_winkler', 'smith_waterman', 'lcs']
+        for col in similarity_columns:
+            ranks[col] = 0.0
+        
+        # Parallelize similarity calculations
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            futures = {
+                executor.submit(calculate_similarities, row, query): index for index, row in ranks.iterrows()
+            }
+
+            for future in concurrent.futures.as_completed(futures):
+                index = futures[future]
+                try:
+                    fuzzy_matching, jaro_winkler, smith_waterman, lcs = future.result()
+                    ranks.at[index, 'fuzzy_matching'] = fuzzy_matching
+                    ranks.at[index, 'jaro_winkler'] = jaro_winkler
+                    ranks.at[index, 'smith_waterman'] = smith_waterman
+                    ranks.at[index, 'lcs'] = lcs
+                except Exception as e:
+                    print(f"Error calculating similarities for row {index}: {e}")
+
+        # Create features by subtracting the means from similarity scores
+        ranks['fuzzy_matching_feature'] = ranks['fuzzy_matching'] - fuzzy_matching_mean
+        ranks['jaro_winkler_feature'] = ranks['jaro_winkler'] - jaro_winkler_mean
+        ranks['smith_waterman_feature'] = ranks['smith_waterman'] - smith_waterman_mean
+        ranks['lcs_feature'] = ranks['lcs'] - lcs_mean
+
+        # Prepare input features for the MLP model
+        features = ranks[['fuzzy_matching_feature', 'jaro_winkler_feature', 'smith_waterman_feature', 'lcs_feature']].values
+        features_tensor = torch.tensor(features, dtype=torch.float32)
+
+        # Perform classification
+        with torch.no_grad():
+            outputs = self.model(features_tensor)
+            preds = torch.round(torch.sigmoid(outputs)).squeeze().cpu().numpy()
+
+        # Add predictions to results
+        ranks['prediction'] = preds
+
+        # Reset index and add to the list of results
+        ranks.reset_index(drop=True, inplace=True)
+        all_results.append(ranks)
+
+    # Concatenate all DataFrames in the list to return a single DataFrame
+    final_df = pd.concat(all_results, ignore_index=True)
+
+    # Drop the specified columns from the final dataframe
+    final_df.drop(columns=[
+        'ret_score', 'fuzzy_matching', 'jaro_winkler', 'smith_waterman', 'lcs',
+        'fuzzy_matching_feature', 'jaro_winkler_feature', 'smith_waterman_feature', 'lcs_feature'
+    ], inplace=True)
+
+    return final_df
+
+# Function to remove stopwords
+def remove_stopwords(query):
+    words = query.split()
+    filtered_words = [word for word in words if word.lower() not in stop_words]
+    return ' '.join(filtered_words)
+
+# Define NRR class
 class NRR:
     def __init__(self, index_path, mlp_model_path='nrr_mlp.pt', model_url='https://github.com/t-a-bonnet/NRR/raw/refs/heads/main/nrr/nrr_mlp'):
-        # Initialize PyTerrier
-        pt.init()
-
         # Check if the MLP model file exists
         if not os.path.exists(mlp_model_path):
             print(f"{mlp_model_path} not found. Downloading from {model_url}...")
@@ -201,238 +295,7 @@ class NRR:
         self.model.load_state_dict(torch.load(mlp_model_path, map_location=torch.device('cpu')))
         self.model.eval()
 
-    def match(self, query_df, text_df, num_results=50, include_file_names=False, file_name_column=None):
-        # Check if 'qid' column exists in query_df
-        if 'qid' not in query_df.columns:
-            raise ValueError("Error: 'qid' column is missing in query_df. Please add the column and try again.")
-        
-        # Check if 'docno' column exists in text_df
-        if 'docno' not in text_df.columns:
-            raise ValueError("Error: 'docno' column is missing in text_df. Please add the column and try again.")
-        
-        # If file names are to be included, check for the file name column
-        if include_file_names:
-            if file_name_column is None:
-                return "Error: File name column not provided. Please specify the file name column."
-            if file_name_column not in text_df.columns:
-                return f"Error: The specified file name column '{file_name_column}' does not exist in text_df."
-        
-        # Ensure 'qid' and 'docno' are strings
-        query_df['qid'] = query_df['qid'].astype(str)
-        text_df['docno'] = text_df['docno'].astype(str)
-
-        # Ensure queries are preprocessed
-        query_df['query'] = query_df['query'].apply(preprocess_text)
-        query_df.dropna(subset=['query'], inplace=True)
-        query_df.reset_index(drop=True, inplace=True)
-
-        # Ensure texts are preprocessed
-        text_df['text'] = text_df['text'].apply(preprocess_text)
-        text_df.dropna(subset=['text'], inplace=True)
-        text_df.reset_index(drop=True, inplace=True)
-
-        # Remove existing index directory
-        index_path = './pd_index'
-        if os.path.exists(index_path):
-            shutil.rmtree(index_path)
-
-        # Indexing texts
-        pd_indexer = pt.DFIndexer(index_path)
-        index = pd_indexer.index(text_df['text'], text_df['docno'])
-
-        # Set up the retrieval model
-        br = pt.BatchRetrieve(index, controls={'wmodel': 'LGD', 'max_results': num_results})
-        br.setControl('wmodel', 'LGD')
-
-        # Similarity score means
-        fuzzy_matching_mean = 91.57859531772576
-        jaro_winkler_mean = 0.5251933067625418
-        smith_waterman_mean = 45.26086956521739
-        lcs_mean = 43.03010033444816
-
-        def calculate_similarities(row, query):
-            # Calculate all similarities for a given row
-            fuzzy_matching = calculate_fuzzy_matching_score(query, row['text'])
-            jaro_winkler = calculate_jaro_winkler_distance(query, row['text'])
-            smith_waterman = calculate_smith_waterman_similarity(query, row['text'])
-            lcs = calculate_lcs(query, row['text'])
-            return fuzzy_matching, jaro_winkler, smith_waterman, lcs
-
-        def search_and_classify(query_df, num_results, text_df):
-            # Create an empty list to store all results
-            all_results = []
-            
-            for _, query_row in query_df.iterrows():
-                qid = query_row['qid']
-                query = query_row['query']
-
-                # Perform the retrieval using PyTerrier
-                ranks = br.search(query)
-                ranks = ranks[:num_results]
-                ranks['qid'] = qid
-                ranks['query'] = ''
-                ranks['text'] = ''
-                if include_file_names:
-                    ranks[file_name_column] = ''
-
-                ranks = ranks.sort_values(by=['score'], ascending=False)
-                ranks.rename(columns={'score': 'ret_score'}, inplace=True)
-                ranks.drop(columns={'docid', 'rank'}, inplace=True)
-
-                # Fill in the query, text, and optionally file name columns
-                for index, row in ranks.iterrows():
-                    ranks.at[index, 'query'] = query
-                    docno = row['docno']
-                    text_match = text_df[text_df['docno'] == docno]
-                    if not text_match.empty:
-                        ranks.at[index, 'text'] = text_match.iloc[0]['text']
-                        if include_file_names:
-                            ranks.at[index, file_name_column] = text_match.iloc[0][file_name_column]
-
-                # Initialize similarity columns
-                similarity_columns = ['fuzzy_matching', 'jaro_winkler', 'smith_waterman', 'lcs']
-                for col in similarity_columns:
-                    ranks[col] = 0.0
-                
-                # Parallelize similarity calculations
-                with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = {
-                        executor.submit(calculate_similarities, row, query): index for index, row in ranks.iterrows()
-                    }
-
-                    for future in concurrent.futures.as_completed(futures):
-                        index = futures[future]
-                        try:
-                            fuzzy_matching, jaro_winkler, smith_waterman, lcs = future.result()
-                            ranks.at[index, 'fuzzy_matching'] = fuzzy_matching
-                            ranks.at[index, 'jaro_winkler'] = jaro_winkler
-                            ranks.at[index, 'smith_waterman'] = smith_waterman
-                            ranks.at[index, 'lcs'] = lcs
-                        except Exception as e:
-                            print(f"Error calculating similarities for row {index}: {e}")
-
-                # Create features by subtracting the means
-                ranks['fuzzy_matching_feature'] = ranks['fuzzy_matching'] - fuzzy_matching_mean
-                ranks['jaro_winkler_feature'] = ranks['jaro_winkler'] - jaro_winkler_mean
-                ranks['smith_waterman_feature'] = ranks['smith_waterman'] - smith_waterman_mean
-                ranks['lcs_feature'] = ranks['lcs'] - lcs_mean
-
-                # Prepare input features for the model
-                features = ranks[['fuzzy_matching_feature', 'jaro_winkler_feature', 'smith_waterman_feature', 'lcs_feature']].values
-                features_tensor = torch.tensor(features, dtype=torch.float32)
-
-                # Perform classification
-                with torch.no_grad():
-                    outputs = self.model(features_tensor)
-                    preds = torch.round(torch.sigmoid(outputs)).squeeze().cpu().numpy()
-
-                # Add predictions to results
-                ranks['prediction'] = preds
-
-                # Reset index and add to the list of all results
-                ranks.reset_index(drop=True, inplace=True)
-                all_results.append(ranks)
-
-            # Concatenate all DataFrames in the list to return a single DataFrame
-            final_df = pd.concat(all_results, ignore_index=True)
-
-            # Drop the specified columns from the final dataframe
-            final_df.drop(columns=[
-                'ret_score', 'fuzzy_matching', 'jaro_winkler', 'smith_waterman', 'lcs',
-                'fuzzy_matching_feature', 'jaro_winkler_feature', 'smith_waterman_feature', 'lcs_feature'
-            ], inplace=True)
-
-            return final_df
-
-        # Call the function to search and classify and return the results
-        return search_and_classify(query_df, num_results=num_results, text_df=text_df)
-
-    def ocr(self, directory):
-        rows = []
-        supported_image_formats = ('.jpg', '.jpeg', '.png')
-        supported_pdf_format = '.pdf'
-
-        # Get all files in the directory
-        files_list = get_files_list(os.path.join(directory, '**', '*'))
-
-        for file in files_list:
-            # Handle image files (JPG, JPEG, PNG)
-            if file.lower().endswith(supported_image_formats):
-                try:
-                    img = Image.open(file)
-                    text = pytesseract.image_to_string(img).replace('\n', ' ')
-                    rows.append({'file': file, 'text': text})
-                except Exception as e:
-                    print(f"Error processing image {file}: {e}")
-
-            # Handle PDF files
-            elif file.lower().endswith(supported_pdf_format):
-                try:
-                    # Convert PDF to images
-                    images = convert_from_path(file)
-                    
-                    for page, img in enumerate(images, start=1):
-                        text = pytesseract.image_to_string(img).replace('\n', ' ')
-                        rows.append({'file': f"{file}/page_{page}", 'text': text})
-                except Exception as e:
-                    print(f"Error processing PDF {file}: {e}")
-
-        # Convert results to DataFrame
-        df = pd.DataFrame(rows)
-
-        # Add docno column
-        df['docno'] = df.index+1
-
-        return df
-
-    def extract(self, directory):
-        rows = []
-
-        # Get all PDF files in the directory using the get_files_list function
-        files_list = get_files_list(os.path.join(directory, '**', '*.pdf'))
-
-        for file in files_list:
-            try:
-                with pdfplumber.open(file) as pdf:
-                    for page in pdf.pages:
-                        text = page.extract_text()
-                        if text:
-                            text = text.replace('\n', ' ')
-                            rows.append({'file': f"{file}/page_{page.page_number}", 'text': text})
-            except Exception as e:
-                print(f"Error processing {file}: {e}")
-
-        # Convert results to DataFrame
-        df = pd.DataFrame(rows)
-
-        # Add docno column
-        df['docno'] = df.index+1
-
-        return df
-
-    def postprocess(self, df):
-        # Function to preprocess queries by removing stopwords
-        def preprocess_query(query):
-            words = query.split()
-            filtered_words = [word for word in words if word.lower() not in stop_words]
-            return ' '.join(filtered_words)
-
-        df['query'] = df['query'].apply(preprocess_query)
-        word_freq = Counter(' '.join(df['query']).split())
-        average_freq = sum(word_freq.values()) / len(word_freq)
-
-        def filter_common_words(query):
-            words = query.split()
-            if len(words) == 1 and word_freq[words[0]] > average_freq:
-                return False
-            return True
-
-        df = df[df['query'].apply(filter_common_words)]
-        df.reset_index(drop=True, inplace=True)
-
-        return df
-    
-    # Function to process structured data to form queries
+     # Function to process structured data to form queries
     def structured_data_to_query(self, df):
         # Add new columns to store the extracted object title and creator name
         df['object_title'] = None
@@ -466,4 +329,128 @@ class NRR:
         # Add qid column
         df['qid'] = df.index+1
         
+        return df
+    
+    def extract(self, directory):
+        rows = []
+
+        # Get all files in the directory
+        files_list = get_files_list(os.path.join(directory, '**', '*.pdf'))
+
+        for file in files_list:
+            try:
+                with pdfplumber.open(file) as pdf:
+                    for page in pdf.pages:
+                        text = page.extract_text()
+                        if text:
+                            text = text.replace('\n', ' ')
+                            rows.append({'file': f"{file}/page_{page.page_number}", 'text': text})
+            except Exception as e:
+                print(f"Error processing {file}: {e}")
+
+        # Convert results to DataFrame
+        df = pd.DataFrame(rows)
+
+        # Add docno column
+        df['docno'] = df.index+1
+
+        return df
+    
+    def ocr(self, directory):
+        rows = []
+        supported_image_formats = ('.jpg', '.jpeg', '.png')
+        supported_pdf_format = '.pdf'
+
+        # Get all files in the directory
+        files_list = get_files_list(os.path.join(directory, '**', '*'))
+
+        for file in files_list:
+            # Handle image files (JPG, JPEG, PNG)
+            if file.lower().endswith(supported_image_formats):
+                try:
+                    img = Image.open(file)
+                    text = pytesseract.image_to_string(img).replace('\n', ' ')
+                    rows.append({'file': file, 'text': text})
+                except Exception as e:
+                    print(f"Error processing image {file}: {e}")
+
+            # Handle PDF files
+            elif file.lower().endswith(supported_pdf_format):
+                try:
+                    images = convert_from_path(file)
+                    for page, img in enumerate(images, start=1):
+                        text = pytesseract.image_to_string(img).replace('\n', ' ')
+                        rows.append({'file': f"{file}/page_{page}", 'text': text})
+                except Exception as e:
+                    print(f"Error processing PDF {file}: {e}")
+
+        # Convert results to DataFrame
+        df = pd.DataFrame(rows)
+
+        # Add docno column
+        df['docno'] = df.index+1
+
+        return df
+ 
+    def match(self, query_df, text_df, num_results=50, include_file_names=False, file_name_column=None):
+        # Check if 'qid' column exists in query_df
+        if 'qid' not in query_df.columns:
+            raise ValueError("Error: 'qid' column is missing in query_df. Please add the column and try again.")
+        
+        # Check if 'docno' column exists in text_df
+        if 'docno' not in text_df.columns:
+            raise ValueError("Error: 'docno' column is missing in text_df. Please add the column and try again.")
+        
+        # If file names are to be included, check for the file name column
+        if include_file_names:
+            if file_name_column is None:
+                return "Error: File name column not provided. Please specify the file name column."
+            if file_name_column not in text_df.columns:
+                return f"Error: The specified file name column '{file_name_column}' does not exist in text_df."
+        
+        # Ensure 'qid' and 'docno' are strings
+        query_df['qid'] = query_df['qid'].astype(str)
+        text_df['docno'] = text_df['docno'].astype(str)
+
+        # Preprocess queries
+        query_df['query'] = query_df['query'].apply(preprocess_text)
+        query_df.dropna(subset=['query'], inplace=True)
+        query_df.reset_index(drop=True, inplace=True)
+
+        # Preprocess texts
+        text_df['text'] = text_df['text'].apply(preprocess_text)
+        text_df.dropna(subset=['text'], inplace=True)
+        text_df.reset_index(drop=True, inplace=True)
+
+        # Remove existing index directory
+        index_path = './pd_index'
+        if os.path.exists(index_path):
+            shutil.rmtree(index_path)
+
+        # Index texts
+        pd_indexer = pt.DFIndexer(index_path)
+        index = pd_indexer.index(text_df['text'], text_df['docno'])
+
+        # Set up the retrieval model
+        br = pt.BatchRetrieve(index, controls={'wmodel': 'LGD', 'max_results': num_results})
+        br.setControl('wmodel', 'LGD')
+
+        return search_and_classify(query_df, num_results=num_results, text_df=text_df)
+
+    # Function to perform postprocessing on matching results
+    def postprocess(self, df):
+        df['query'] = df['query'].apply(remove_stopwords)
+        word_freq = Counter(' '.join(df['query']).split())
+        average_freq = sum(word_freq.values()) / len(word_freq)
+        
+        # Function to filter common words based on term frequency
+        def filter_common_words(query):
+            words = query.split()
+            if len(words) == 1 and word_freq[words[0]] > average_freq:
+                return False
+            return True
+
+        df = df[df['query'].apply(filter_common_words)]
+        df.reset_index(drop=True, inplace=True)
+
         return df
