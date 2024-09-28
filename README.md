@@ -22,7 +22,7 @@
        - Jaro-Winkler Distance
        - Longest Common Subsequence
    
-   Features derived from these similarity measures are used as inputs for the classifier.
+        Features derived from these similarity measures are used as inputs for the classifier.
 
    - **MLP Neural Network Classifier**: 
    NRR uses a neural network classifier, trained on approximately 8,000 annotated query-text pairs, to predict the final matches. The classifier learned to assess if a query-text pair is a match based on the derived similarity features.
