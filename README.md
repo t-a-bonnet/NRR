@@ -2,7 +2,7 @@
 
 ## Overview
 
-**NRR (Neural Retrieval Refinement)** is an entity matching module designed to address the specific needs of the cultural heritage domain, with a focus on matching structured data (e.g. Linked Art) and unstructured full-text content (e.g. exhibition catalogues, newspaper texts, and blog posts). NRR combines retrieval and classification approaches to produce accurate entity matches using the PyTerrier information retrieval framework and a multi-layer perceptron (MLP) neural network classifier.
+**NRR (Neural Retrieval Refinement)** is an entity matching module designed as part of the [Enriching Exhibition Scholarship project](https://www.sps.ed.ac.uk/research/research-project/enriching-exhibition-scholarship#:~:text=Description,by%20the%20Linked%20Art%20collaboration.) to address the specific needs of the cultural heritage domain, with a focus on matching structured data (e.g. Linked Art) and unstructured full-text content (e.g. exhibition catalogues, newspaper texts, and blog posts). NRR combines retrieval and classification approaches to produce accurate entity matches using the PyTerrier information retrieval framework and a multi-layer perceptron (MLP) neural network classifier.
 
 ## Features
 
@@ -126,6 +126,38 @@ The nrr.postprocess() function refines the results by filtering out matches to o
 ## Google Colab Tutorial
 
 For a comprehensive demonstration of NRR and a step-by-step guide on its usage, please refer to the [Google Colab tutorial](https://colab.research.google.com/drive/1pwWTMatqy-sxB5etYUMTkXN5uqCd5pyg#scrollTo=D8_nd5tyNEcq).
+
+## Enriching Exhibition Scholarship Project Participants
+
+**[Aruna Devi Bhaugeerutty](https://www.linkedin.com/in/arunab/) (Co-Investigator)**
+Head of Digital Collections, The Ashmolean Museum
+
+**[Tyler Bonnet (Post-Doctoral Researcher)](https://www.linkedin.com/in/tylerbonnet/)**
+Research Fellow, Neuropolitics Research Lab, University of Edinburgh
+
+**[Kelly Davis (Data Engineer)](https://www.linkedin.com/in/daviskellyk/)**
+Cultural Heritage Data Engineer, Yale University
+
+**[Emmanuelle Delmas-Glass (Co-Investigator)](https://www.linkedin.com/in/emmanuelle-delmas-glass-3929343/)**
+Head Collections Information and Access, Yale Center for British Art
+
+**[Clare Llewellyn (AHRC Principal Investigator)](https://www.sps.ed.ac.uk/staff/clare-llewellyn)**
+Lecturer in Governance, Technology, and Data, University of Edinburgh
+
+**[Kevin Page (Co-Investigator)](https://eng.ox.ac.uk/people/kevin-page/)**
+Associate Faculty and Senior Researcher, Oxford e-Research Centre, Department of Engineering Science, University of Oxford
+
+**[Robert Sanderson (Chair of the Advisory Board)](https://www.linkedin.com/in/robert-sanderson/)**
+Director for Cultural Heritage Metadata projects, in the office of the Vice Provost.
+
+**[Andrew Shapland (Co-Investigator)](https://www.ashmolean.org/people/andrew-shapland)**
+Sir Arthur Evans Curator of Bronze Age and Classical Greece, The Ashmolean Museum
+
+**[Kayla Shipp (NEH Principal Investigator)](https://kaylashipp.com/)**
+Program Manager for the Yale Digital Humanities Lab
+
+## Funding details
+This work was supported by the Arts and Humanities Research Council [AH/Y006011/1] and the National Endowment for the Humanities [HND-284978-22].
 
 ## References
 
