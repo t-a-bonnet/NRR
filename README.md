@@ -2,7 +2,7 @@
 
 ## Overview
 
-**NRR (Neural Retrieval Refinement)** is an entity matching module designed as part of the [Enriching Exhibition Scholarship project](https://www.sps.ed.ac.uk/research/research-project/enriching-exhibition-scholarship#:~:text=Description,by%20the%20Linked%20Art%20collaboration.) to address the specific needs of the cultural heritage domain, with a focus on matching structured data (e.g. Linked Art) and unstructured full-text content (e.g. exhibition catalogues, newspaper texts, and blog posts). NRR combines retrieval and classification approaches to produce accurate entity matches using the PyTerrier information retrieval framework and a multi-layer perceptron (MLP) neural network classifier.
+**NRR (Neural Retrieval Refinement)** is an entity matching module developed for the [Enriching Exhibition Scholarship project](https://www.sps.ed.ac.uk/research/research-project/enriching-exhibition-scholarship#:~:text=Description,by%20the%20Linked%20Art%20collaboration.) to address the specific needs of the cultural heritage domain, with a focus on matching structured data (e.g. Linked Art) and unstructured full-text content (e.g. exhibition catalogues, newspaper texts, and blog posts). NRR combines retrieval and classification approaches to produce accurate entity matches using the PyTerrier information retrieval framework and a multi-layer perceptron (MLP) neural network classifier.
 
 ## Features
 
