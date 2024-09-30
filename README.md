@@ -129,7 +129,7 @@ For a comprehensive demonstration of NRR and a step-by-step guide on its usage, 
 
 ## Enriching Exhibition Scholarship Project Participants
 
-**[Aruna Devi Bhaugeerutty](https://www.linkedin.com/in/arunab/) (Co-Investigator)**
+**[Aruna Devi Bhaugeerutty (Co-Investigator)](https://www.linkedin.com/in/arunab/)**
 Head of Digital Collections, The Ashmolean Museum
 
 **[Tyler Bonnet (Post-Doctoral Researcher)](https://www.linkedin.com/in/tylerbonnet/)**
